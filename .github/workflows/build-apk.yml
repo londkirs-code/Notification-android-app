@@ -16,7 +16,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: notification-android-apk-${{ github.ref }}
+  group: notification-android-apk-v2-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
