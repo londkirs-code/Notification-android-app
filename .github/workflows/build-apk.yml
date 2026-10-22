@@ -79,6 +79,21 @@ jobs:
         with:
           gradle-version: "9.3.1"
 
+      - name: Create CI debug signing keystore
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ ! -f debug.keystore ]]; then
+            keytool -genkeypair -v \\
+              -keystore debug.keystore \\
+              -storepass android \\
+              -alias androiddebugkey \\
+              -keypass android \\
+              -dname "CN=Android Debug,O=Android,C=US" \\
+              -keyalg RSA -keysize 2048 -validity 10000
+          fi
+          test -s debug.keystore
+
       - name: Build debug APK
         shell: bash
         env:
