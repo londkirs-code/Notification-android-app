@@ -48,16 +48,31 @@ jobs:
           java-version: "17"
           cache: gradle
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install the project's required Android SDK platform
+      - name: Locate Android SDK tools safely
+        id: sdk
         shell: bash
         run: |
           set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          SDKMANAGER="$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager 2>/dev/null | sort -V | tail -n1)"
+          if [[ -z "$SDKMANAGER" || ! -x "$SDKMANAGER" ]]; then
+            echo "::error::Android SDK manager was not found under $SDK_ROOT/cmdline-tools. Available SDK paths:"
+            find /usr/local/lib/android /opt -type f -name sdkmanager -print 2>/dev/null | head -20 || true
+            exit 1
+          fi
+          echo "sdk_root=$SDK_ROOT" >> "$GITHUB_OUTPUT"
+          echo "sdkmanager=$SDKMANAGER" >> "$GITHUB_OUTPUT"
+          echo "Using SDK manager: $SDKMANAGER"
+
+      - name: Install the project's required Android SDK platform
+        shell: bash
+        env:
+          SDKMANAGER: ${{ steps.sdk.outputs.sdkmanager }}
+        run: |
+          set -euo pipefail
           # This project uses compileSdk release(36) with minorApiLevel 1.
-          yes | sdkmanager --licenses >/dev/null || true
-          sdkmanager "platform-tools" "platforms;android-36" "platforms;android-36-ext1" "build-tools;36.0.0"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platform-tools" "platforms;android-36" "platforms;android-36-ext1" "build-tools;36.0.0"
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
