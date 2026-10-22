@@ -153,8 +153,19 @@ object NotificationEngine {
             MediaManager.play(context)
         }
 
+        val smallIconRes = when (config.iconKey) {
+            "BELL" -> android.R.drawable.ic_popup_reminder
+            "STAR" -> android.R.drawable.btn_star_big_on
+            "SHIELD" -> android.R.drawable.ic_lock_lock
+            "ALERT" -> android.R.drawable.stat_sys_warning
+            "MEDIA" -> android.R.drawable.ic_media_play
+            "CHAT" -> R.drawable.ic_action_reply
+            "CHECK" -> R.drawable.ic_action_check
+            else -> R.drawable.ic_stat_notify
+        }
+
         val builder = NotificationCompat.Builder(context, channelId)
-            .setSmallIcon(R.drawable.ic_stat_notify)
+            .setSmallIcon(smallIconRes)
             .setContentTitle(config.title)
             .setContentText(config.content)
             .setSubText(config.subText.takeIf { it.isNotBlank() })
@@ -223,6 +234,7 @@ object NotificationEngine {
                 putExtra(NotificationActionReceiver.EXTRA_BUTTON_LABEL, config.button1Label)
                 putExtra("extra_button_action", config.button1Action.name)
                 putExtra("extra_button_url", config.button1Url)
+                putExtra("extra_button_package", config.button1Package)
             }
             val pIntent = PendingIntent.getBroadcast(
                 context,
@@ -241,6 +253,7 @@ object NotificationEngine {
                 putExtra(NotificationActionReceiver.EXTRA_BUTTON_LABEL, config.button2Label)
                 putExtra("extra_button_action", config.button2Action.name)
                 putExtra("extra_button_url", config.button2Url)
+                putExtra("extra_button_package", config.button2Package)
             }
             val pIntent = PendingIntent.getBroadcast(
                 context,
@@ -259,6 +272,7 @@ object NotificationEngine {
                 putExtra(NotificationActionReceiver.EXTRA_BUTTON_LABEL, config.button3Label)
                 putExtra("extra_button_action", config.button3Action.name)
                 putExtra("extra_button_url", config.button3Url)
+                putExtra("extra_button_package", config.button3Package)
             }
             val pIntent = PendingIntent.getBroadcast(
                 context,
@@ -346,12 +360,12 @@ object NotificationEngine {
                 builder.setStyle(inboxStyle)
             }
             NotificationStyleType.MESSAGING -> {
-                val queenPerson = Person.Builder().setName("מלכת ההתראות").setKey("queen_bot").build()
+                val queenPerson = Person.Builder().setName("מלך ההתראות").setKey("king_bot").build()
                 val userPerson = Person.Builder().setName("משתמש").setKey("user_client").build()
 
                 val messagingStyle = NotificationCompat.MessagingStyle(userPerson)
                     .setConversationTitle("ערוץ פקודות ותקשורת")
-                    .addMessage("שלום! אני מוכנה לקבל פקודות ישירות.", System.currentTimeMillis() - 15000, queenPerson)
+                    .addMessage("שלום! אני מוכן לקבל פקודות ישירות.", System.currentTimeMillis() - 15000, queenPerson)
                     .addMessage("ניתן להשיב לי ישירות מתוך תיבת ההזנה 👇", System.currentTimeMillis() - 5000, queenPerson)
 
                 builder.setStyle(messagingStyle)

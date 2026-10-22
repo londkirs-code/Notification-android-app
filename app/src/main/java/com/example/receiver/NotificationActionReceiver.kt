@@ -109,6 +109,16 @@ class NotificationActionReceiver : BroadcastReceiver() {
                             }
                             context.startActivity(browserIntent)
                         }
+                        "OPEN_APP" -> {
+                            val packageName = intent.getStringExtra("extra_button_package")?.takeIf { it.isNotBlank() } ?: "com.whatsapp"
+                            val launchIntent = context.packageManager.getLaunchIntentForPackage(packageName)
+                            if (launchIntent != null) {
+                                launchIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                                context.startActivity(launchIntent)
+                            } else {
+                                android.widget.Toast.makeText(context, "האפליקציה אינה מותקנת או ששם החבילה שגוי: $packageName", android.widget.Toast.LENGTH_LONG).show()
+                            }
+                        }
                         "PLAY_MEDIA" -> {
                             com.example.engine.MediaManager.play(context)
                         }

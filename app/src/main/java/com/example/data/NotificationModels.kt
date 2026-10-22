@@ -41,6 +41,7 @@ enum class ButtonActionType(val titleHebrew: String, val category: String) {
     OPEN_WIFI("פתח הגדרות Wi-Fi", "מערכת"),
     OPEN_BLUETOOTH("פתח הגדרות Bluetooth", "מערכת"),
     OPEN_BROWSER("פתח קישור אינטרנט (URL)", "אינטרנט"),
+    OPEN_APP("פתח אפליקציה אחרת (Package)", "אפליקציות"),
     PLAY_MEDIA("הפעל נגן מדיה", "מדיה"),
     
     // Accessibility Actions
@@ -52,6 +53,20 @@ enum class ButtonActionType(val titleHebrew: String, val category: String) {
     ACCESSIBILITY_POWER_DIALOG("נגישות: תפריט כיבוי/הפעלה", "נגישות"),
     ACCESSIBILITY_LOCK_SCREEN("נגישות: נעילת מסך", "נגישות"),
     ACCESSIBILITY_SCREENSHOT("נגישות: צילום מסך", "נגישות")
+}
+
+enum class MockupElement(val titleHebrew: String) {
+    ICON("אייקון ותג התראה"),
+    HEADER("כותרת עליונה וסטטוס"),
+    CONTENT("כותרת וטקסט ההתראה"),
+    IMAGE("תמונת נושא / אייקון גדול"),
+    PROGRESS("סרגל התקדמות"),
+    MEDIA("נגן מדיה"),
+    DIRECT_REPLY("תיבת מענה ישיר"),
+    BUTTON_1("כפתור פעולה 1"),
+    BUTTON_2("כפתור פעולה 2"),
+    BUTTON_3("כפתור פעולה 3"),
+    SENSORY("צליל, רטט ועדיפות")
 }
 
 enum class ActionType(val labelHebrew: String) {
@@ -79,29 +94,33 @@ data class NotificationLog(
 
 data class NotificationConfig(
     val id: Int = 101,
-    val title: String = "מלכת ההתראות",
+    val title: String = "מלך ההתראות",
     val content: String = "התראה אינטראקטיבית פעילה עם אפשרויות מתקדמות",
-    val subText: String = "NotifyQueen",
-    val summaryText: String = "סטטוס מערכת",
+    val subText: String = "NotifyKing",
+    val summaryText: String = "מרכז שליטה",
     val channelId: String = "queen_general",
     val channelName: String = "התראות כלליות",
     val priority: NotificationPriority = NotificationPriority.HIGH,
     val styleType: NotificationStyleType = NotificationStyleType.STANDARD,
     val bigText: String = "זהו טקסט מורחב ומפורט מאוד שנחשף כאשר גוררים את ההתראה כלפי מטה. ניתן לכתוב כאן פסקאות שלמות, נתונים טכניים, או סיכומים מעמיקים.",
     val inboxLines: List<String> = listOf("• פקודה 1 בוצעה בהצלחה", "• נתקבל מענה ישיר מהמשתמש", "• שרת מקומי מסונכרן", "• סוללה תקינה 98%"),
+    val iconKey: String = "CROWN",
     val imageDrawableRes: Int? = null,
     val button1Enabled: Boolean = true,
     val button1Label: String = "אישור וביצוע",
     val button1Action: ButtonActionType = ButtonActionType.TOAST,
     val button1Url: String = "https://www.google.com",
+    val button1Package: String = "com.whatsapp",
     val button2Enabled: Boolean = true,
     val button2Label: String = "פרטים נוספים",
     val button2Action: ButtonActionType = ButtonActionType.OPEN_SETTINGS,
     val button2Url: String = "https://github.com",
+    val button2Package: String = "com.google.android.youtube",
     val button3Enabled: Boolean = false,
     val button3Label: String = "דחייה",
     val button3Action: ButtonActionType = ButtonActionType.ACCESSIBILITY_HOME,
     val button3Url: String = "",
+    val button3Package: String = "",
     val directReplyEnabled: Boolean = true,
     val directReplyLabel: String = "הקלד תשובה מהירה כאן...",
     val directReplyButtonLabel: String = "השב",
@@ -112,7 +131,7 @@ data class NotificationConfig(
     val progressSimulateLive: Boolean = false,
     val mediaPlaying: Boolean = false,
     val mediaTrackTitle: String = "Crown Symphony - Synthwave",
-    val mediaArtist: String = "Notification Queen Studio",
+    val mediaArtist: String = "Notification King Studio",
     val ongoing: Boolean = false,
     val autoCancel: Boolean = true,
     val alertOnce: Boolean = false,

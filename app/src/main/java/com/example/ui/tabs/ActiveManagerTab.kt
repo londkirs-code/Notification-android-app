@@ -106,6 +106,75 @@ fun ActiveManagerTab(
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        // Accessibility Permission Status Card
+        item {
+            val accessibilityManager = remember(context) {
+                context.getSystemService(Context.ACCESSIBILITY_SERVICE) as android.view.accessibility.AccessibilityManager
+            }
+            val isAccessibilityEnabled by remember(accessibilityManager) {
+                mutableStateOf(accessibilityManager.isEnabled)
+            }
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = if (isAccessibilityEnabled) EmeraldActive.copy(alpha = 0.12f) else CoralAlert.copy(alpha = 0.12f)
+                )
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(38.dp)
+                            .clip(CircleShape)
+                            .background(if (isAccessibilityEnabled) EmeraldActive else CoralAlert),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = if (isAccessibilityEnabled) Icons.Default.Check else Icons.Default.Warning,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = if (isAccessibilityEnabled) "הרשאת נגישות פעילה ומאושרת" else "נדרשת הרשאת נגישות לפעולות מתקדמות",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = if (isAccessibilityEnabled) "האפליקציה יכולה להפעיל פעולות מערכת גלובליות" else "יש להפעיל את הרשאת הנגישות בהגדרות המכשיר",
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    if (!isAccessibilityEnabled) {
+                        Button(
+                            onClick = {
+                                val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                                context.startActivity(intent)
+                            },
+                            shape = RoundedCornerShape(8.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = CoralAlert)
+                        ) {
+                            Text("הפעל נגישות", fontSize = 11.sp)
+                        }
+                    }
+                }
+            }
+        }
+
         // Permission Status Card
         item {
             Card(

@@ -168,15 +168,15 @@ fun PresetsTab(
                 )
             ),
             PresetItem(
-                title = "מלכת ההתראות המלאה (3 כפתורים + מענה)",
+                title = "מלך ההתראות המלא (3 כפתורים + מענה)",
                 description = "כל היכולות ביחד: 3 כפתורי פעולה שונים, שדה מענה ישיר, טקסט מורחב וקביעות",
                 icon = Icons.Default.Send,
                 accentColor = CrownGold,
                 config = NotificationConfig(
                     id = 204,
-                    title = "👑 משימה דחופה ממלכת ההתראות",
+                    title = "👑 משימה דחופה ממלך ההתראות",
                     content = "יש לבחור אחת מ-3 הפעולות או להקליד מענה חופשי בתיבה.",
-                    subText = "NotifyQueen המלא",
+                    subText = "NotifyKing המלא",
                     summaryText = "מרכז שליטה",
                     priority = NotificationPriority.HIGH,
                     styleType = NotificationStyleType.BIG_TEXT,
@@ -207,7 +207,7 @@ fun PresetsTab(
                     priority = NotificationPriority.LOW,
                     styleType = NotificationStyleType.MEDIA,
                     mediaTrackTitle = "Cyber Symphony 2026",
-                    mediaArtist = "Notification Queen Studio",
+                    mediaArtist = "Notification King Studio",
                     ongoing = true,
                     button1Enabled = false,
                     button2Enabled = false,

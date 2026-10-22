@@ -129,9 +129,9 @@ fun MainScreen() {
         mutableStateOf(
             NotificationConfig(
                 id = 101,
-                title = "מלכת ההתראות",
+                title = "מלך ההתראות",
                 content = "התראה פעילה עם כפתורי פעולה ומענה ישיר",
-                subText = "NotifyQueen",
+                subText = "NotifyKing",
                 summaryText = "מרכז שליטה",
                 priority = NotificationPriority.HIGH,
                 styleType = NotificationStyleType.STANDARD,
@@ -169,13 +169,13 @@ fun MainScreen() {
                         Spacer(modifier = Modifier.width(8.dp))
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
-                                text = "מלכת ההתראות",
+                                text = "מלך ההתראות",
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 17.sp,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
-                                text = "NotifyQueen Studio",
+                                text = "NotifyKing Studio",
                                 fontSize = 10.sp,
                                 color = CrownGold,
                                 fontWeight = FontWeight.SemiBold
