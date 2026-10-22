@@ -70,7 +70,7 @@ jobs:
           SDKMANAGER: ${{ steps.sdk.outputs.sdkmanager }}
         run: |
           set -euo pipefail
-          # This project uses compileSdk release(36) with minorApiLevel 1.
+          # Rebuild verification: install the project's Android API 36 SDK platform.
           yes | "$SDKMANAGER" --licenses >/dev/null || true
           "$SDKMANAGER" "platform-tools" "platforms;android-36" "build-tools;36.0.0"
 
