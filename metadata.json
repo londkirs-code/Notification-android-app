@@ -1,0 +1,6 @@
+{
+  "name": "NotifyQueen",
+  "description": "מלכת ההתראות - סטודיו ומעבדת התראות מתקדמת: כפתורי פעולה, מענה ישיר מההתראה, סרגל התקדמות, מדיה, צלילים, רטט ותאימות ל-Termux",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
