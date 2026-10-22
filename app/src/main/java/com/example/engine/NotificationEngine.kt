@@ -120,13 +120,23 @@ object NotificationEngine {
         }
     }
 
-    fun scheduleNotification(context: Context, config: NotificationConfig, delaySeconds: Long) {
-        scheduledJobs[config.id]?.cancel()
-        val job = CoroutineScope(Dispatchers.Default).launch {
-            delay(delaySeconds * 1000L)
-            postNotification(context, config)
+    fun scheduleNotification(context: Context, config: NotificationConfig, triggerTimeMillis: Long) {
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as android.app.AlarmManager
+        val intent = Intent(context, com.example.receiver.ScheduledNotificationReceiver::class.java).apply {
+            putExtra("config", config)
         }
-        scheduledJobs[config.id] = job
+        val pendingIntent = android.app.PendingIntent.getBroadcast(
+            context,
+            config.id,
+            intent,
+            android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
+        )
+
+        alarmManager.setExactAndAllowWhileIdle(
+            android.app.AlarmManager.RTC_WAKEUP,
+            triggerTimeMillis,
+            pendingIntent
+        )
     }
 
     fun postNotification(context: Context, config: NotificationConfig): Int {
@@ -211,6 +221,8 @@ object NotificationEngine {
                 putExtra(NotificationActionReceiver.EXTRA_NOTIFICATION_ID, config.id)
                 putExtra(NotificationActionReceiver.EXTRA_BUTTON_INDEX, 1)
                 putExtra(NotificationActionReceiver.EXTRA_BUTTON_LABEL, config.button1Label)
+                putExtra("extra_button_action", config.button1Action.name)
+                putExtra("extra_button_url", config.button1Url)
             }
             val pIntent = PendingIntent.getBroadcast(
                 context,
@@ -227,6 +239,8 @@ object NotificationEngine {
                 putExtra(NotificationActionReceiver.EXTRA_NOTIFICATION_ID, config.id)
                 putExtra(NotificationActionReceiver.EXTRA_BUTTON_INDEX, 2)
                 putExtra(NotificationActionReceiver.EXTRA_BUTTON_LABEL, config.button2Label)
+                putExtra("extra_button_action", config.button2Action.name)
+                putExtra("extra_button_url", config.button2Url)
             }
             val pIntent = PendingIntent.getBroadcast(
                 context,
@@ -243,6 +257,8 @@ object NotificationEngine {
                 putExtra(NotificationActionReceiver.EXTRA_NOTIFICATION_ID, config.id)
                 putExtra(NotificationActionReceiver.EXTRA_BUTTON_INDEX, 3)
                 putExtra(NotificationActionReceiver.EXTRA_BUTTON_LABEL, config.button3Label)
+                putExtra("extra_button_action", config.button3Action.name)
+                putExtra("extra_button_url", config.button3Url)
             }
             val pIntent = PendingIntent.getBroadcast(
                 context,

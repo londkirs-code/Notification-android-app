@@ -1,14 +1,11 @@
 package com.example.data
 
-import android.app.Notification
-import androidx.core.app.NotificationCompat
-
 enum class NotificationPriority(val titleHebrew: String, val compatPriority: Int, val channelImportance: Int) {
-    URGENT("דחוף ביותר (Heads-Up מתפרץ)", NotificationCompat.PRIORITY_MAX, 4), // IMPORTANCE_HIGH
-    HIGH("גבוה (קול ורטט)", NotificationCompat.PRIORITY_HIGH, 4),
-    DEFAULT("ברירת מחדל", NotificationCompat.PRIORITY_DEFAULT, 3), // IMPORTANCE_DEFAULT
-    LOW("נמוך (שקט, ללא קול)", NotificationCompat.PRIORITY_LOW, 2), // IMPORTANCE_LOW
-    MIN("מינימלי (ממוזער בתחתית)", NotificationCompat.PRIORITY_MIN, 1) // IMPORTANCE_MIN
+    URGENT("דחוף ביותר (Heads-Up מתפרץ)", androidx.core.app.NotificationCompat.PRIORITY_MAX, 4),
+    HIGH("גבוה (קול ורטט)", androidx.core.app.NotificationCompat.PRIORITY_HIGH, 4),
+    DEFAULT("ברירת מחדל", androidx.core.app.NotificationCompat.PRIORITY_DEFAULT, 3),
+    LOW("נמוך (שקט, ללא קול)", androidx.core.app.NotificationCompat.PRIORITY_LOW, 2),
+    MIN("מינימלי (ממוזער בתחתית)", androidx.core.app.NotificationCompat.PRIORITY_MIN, 1)
 }
 
 enum class NotificationStyleType(val titleHebrew: String) {
@@ -36,6 +33,25 @@ enum class SoundPreset(val titleHebrew: String) {
     ALARM("צליל שעון מעורר / אזעקה"),
     RINGTONE("צלצול שיחה"),
     SILENT("ללא צליל (שקט)")
+}
+
+enum class ButtonActionType(val titleHebrew: String, val category: String) {
+    TOAST("הצג הודעת Toast", "כללי"),
+    OPEN_SETTINGS("פתח הגדרות מערכת", "מערכת"),
+    OPEN_WIFI("פתח הגדרות Wi-Fi", "מערכת"),
+    OPEN_BLUETOOTH("פתח הגדרות Bluetooth", "מערכת"),
+    OPEN_BROWSER("פתח קישור אינטרנט (URL)", "אינטרנט"),
+    PLAY_MEDIA("הפעל נגן מדיה", "מדיה"),
+    
+    // Accessibility Actions
+    ACCESSIBILITY_HOME("נגישות: מסך הבית", "נגישות"),
+    ACCESSIBILITY_BACK("נגישות: כפתור חזרה", "נגישות"),
+    ACCESSIBILITY_RECENTS("נגישות: אפליקציות פתוחות", "נגישות"),
+    ACCESSIBILITY_NOTIFICATIONS("נגישות: פתיחת וילון התראות", "נגישות"),
+    ACCESSIBILITY_QUICK_SETTINGS("נגישות: הגדרות מהירות", "נגישות"),
+    ACCESSIBILITY_POWER_DIALOG("נגישות: תפריט כיבוי/הפעלה", "נגישות"),
+    ACCESSIBILITY_LOCK_SCREEN("נגישות: נעילת מסך", "נגישות"),
+    ACCESSIBILITY_SCREENSHOT("נגישות: צילום מסך", "נגישות")
 }
 
 enum class ActionType(val labelHebrew: String) {
@@ -74,28 +90,29 @@ data class NotificationConfig(
     val bigText: String = "זהו טקסט מורחב ומפורט מאוד שנחשף כאשר גוררים את ההתראה כלפי מטה. ניתן לכתוב כאן פסקאות שלמות, נתונים טכניים, או סיכומים מעמיקים.",
     val inboxLines: List<String> = listOf("• פקודה 1 בוצעה בהצלחה", "• נתקבל מענה ישיר מהמשתמש", "• שרת מקומי מסונכרן", "• סוללה תקינה 98%"),
     val imageDrawableRes: Int? = null,
-    // Buttons
     val button1Enabled: Boolean = true,
     val button1Label: String = "אישור וביצוע",
+    val button1Action: ButtonActionType = ButtonActionType.TOAST,
+    val button1Url: String = "https://www.google.com",
     val button2Enabled: Boolean = true,
     val button2Label: String = "פרטים נוספים",
+    val button2Action: ButtonActionType = ButtonActionType.OPEN_SETTINGS,
+    val button2Url: String = "https://github.com",
     val button3Enabled: Boolean = false,
     val button3Label: String = "דחייה",
-    // Direct Reply RemoteInput
+    val button3Action: ButtonActionType = ButtonActionType.ACCESSIBILITY_HOME,
+    val button3Url: String = "",
     val directReplyEnabled: Boolean = true,
     val directReplyLabel: String = "הקלד תשובה מהירה כאן...",
     val directReplyButtonLabel: String = "השב",
     val directReplyKey: String = "key_user_reply",
-    // Progress
     val progressMax: Int = 100,
     val progressCurrent: Int = 65,
     val progressIndeterminate: Boolean = false,
     val progressSimulateLive: Boolean = false,
-    // Media
     val mediaPlaying: Boolean = false,
     val mediaTrackTitle: String = "Crown Symphony - Synthwave",
     val mediaArtist: String = "Notification Queen Studio",
-    // Sensory
     val ongoing: Boolean = false,
     val autoCancel: Boolean = true,
     val alertOnce: Boolean = false,
@@ -105,9 +122,10 @@ data class NotificationConfig(
     val ledColorHex: String? = "#F59E0B",
     val groupKey: String? = null,
     val isGroupSummary: Boolean = false,
-    // Chronometer
     val chronometerCountDown: Boolean = false,
     val chronometerSeconds: Long = 120,
     val timeoutAfterMs: Long = 0,
-    val badgeNumber: Int = 1
-)
+    val badgeNumber: Int = 1,
+    val scheduledTimeMillis: Long? = null,
+    val progressSpeedFactor: Float = 1.0f
+) : java.io.Serializable

@@ -86,8 +86,12 @@ fun StudioTab(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    var scheduleSeconds by remember { mutableStateOf("10") }
-    var isScheduling by remember { mutableStateOf(false) }
+    val accessibilityManager = remember(context) {
+        context.getSystemService(Context.ACCESSIBILITY_SERVICE) as android.view.accessibility.AccessibilityManager
+    }
+    val isAccessibilityEnabled by remember(accessibilityManager) {
+        mutableStateOf(accessibilityManager.isEnabled)
+    }
 
     LazyColumn(
         modifier = modifier
@@ -181,31 +185,21 @@ fun StudioTab(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    OutlinedTextField(
-                        value = scheduleSeconds,
-                        onValueChange = { scheduleSeconds = it },
-                        label = { Text("שניות לתזמון") },
-                        modifier = Modifier.width(110.dp),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        singleLine = true
+                    Text(
+                        text = if (currentConfig.scheduledTimeMillis != null)
+                            "מתוזמן ל: ${java.text.SimpleDateFormat("dd/MM/yyyy HH:mm", java.util.Locale.getDefault()).format(java.util.Date(currentConfig.scheduledTimeMillis!!))}"
+                            else "לא תוכנן",
+                        fontSize = 11.sp,
+                        modifier = Modifier.weight(1f)
                     )
 
-                    Button(
-                        onClick = {
-                            val secs = scheduleSeconds.toLongOrNull() ?: 10L
-                            NotificationEngine.scheduleNotification(context, currentConfig, secs)
-                            Toast.makeText(context, "ההתראה תעלה אוטומטית בעוד $secs שניות...", Toast.LENGTH_SHORT).show()
-                        },
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(52.dp),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = EmeraldActive)
-                    ) {
-                        Icon(Icons.Default.Alarm, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("תזמן התראה בעוד ${scheduleSeconds}ש'", fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                    }
+                    com.example.ui.components.DateTimePicker(
+                        onDateTimeSelected = { timestamp ->
+                            onConfigChange(currentConfig.copy(scheduledTimeMillis = timestamp))
+                            NotificationEngine.scheduleNotification(context, currentConfig.copy(scheduledTimeMillis = timestamp), timestamp)
+                            Toast.makeText(context, "ההתראה תעלה בזמן שנקבע!", Toast.LENGTH_SHORT).show()
+                        }
+                    )
                 }
             }
         }
@@ -324,20 +318,22 @@ fun StudioTab(
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Text("התקדמות קבועה: ${currentConfig.progressCurrent}%")
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Text("טעינה מסתובבת", fontSize = 12.sp)
-                                        Switch(
-                                            checked = currentConfig.progressIndeterminate,
-                                            onCheckedChange = { onConfigChange(currentConfig.copy(progressIndeterminate = it)) }
-                                        )
-                                    }
+                                    Text("מהירות התקדמות (x${"%.1f".format(currentConfig.progressSpeedFactor)})")
                                 }
-                                if (!currentConfig.progressIndeterminate) {
-                                    Slider(
-                                        value = currentConfig.progressCurrent.toFloat(),
-                                        onValueChange = { onConfigChange(currentConfig.copy(progressCurrent = it.toInt())) },
-                                        valueRange = 0f..100f
+                                Slider(
+                                    value = currentConfig.progressSpeedFactor,
+                                    onValueChange = { onConfigChange(currentConfig.copy(progressSpeedFactor = it)) },
+                                    valueRange = 0.1f..5.0f
+                                )
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text("הפעל סימולציית התקדמות חיה", fontSize = 12.sp)
+                                    Switch(
+                                        checked = currentConfig.progressSimulateLive,
+                                        onCheckedChange = { onConfigChange(currentConfig.copy(progressSimulateLive = it)) }
                                     )
                                 }
                             }
@@ -363,58 +359,130 @@ fun StudioTab(
                         color = MaterialTheme.colorScheme.primary
                     )
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Checkbox(
-                            checked = currentConfig.button1Enabled,
-                            onCheckedChange = { onConfigChange(currentConfig.copy(button1Enabled = it)) }
-                        )
-                        OutlinedTextField(
-                            value = currentConfig.button1Label,
-                            onValueChange = { onConfigChange(currentConfig.copy(button1Label = it)) },
-                            label = { Text("כפתור 1") },
-                            modifier = Modifier.weight(1f),
-                            enabled = currentConfig.button1Enabled,
-                            singleLine = true
-                        )
+                    // Button 1
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Checkbox(
+                                checked = currentConfig.button1Enabled,
+                                onCheckedChange = { onConfigChange(currentConfig.copy(button1Enabled = it)) }
+                            )
+                            OutlinedTextField(
+                                value = currentConfig.button1Label,
+                                onValueChange = { onConfigChange(currentConfig.copy(button1Label = it)) },
+                                label = { Text("כפתור 1 (תווית)") },
+                                modifier = Modifier.weight(1f),
+                                enabled = currentConfig.button1Enabled,
+                                singleLine = true
+                            )
+                        }
+                        if (currentConfig.button1Enabled) {
+                            Text("פעולה לכפתור 1:", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                com.example.data.ButtonActionType.entries.forEach { action ->
+                                    FilterChip(
+                                        selected = currentConfig.button1Action == action,
+                                        onClick = { onConfigChange(currentConfig.copy(button1Action = action)) },
+                                        label = { Text(action.titleHebrew, fontSize = 10.sp) }
+                                    )
+                                }
+                            }
+                            if (currentConfig.button1Action == com.example.data.ButtonActionType.OPEN_BROWSER) {
+                                OutlinedTextField(
+                                    value = currentConfig.button1Url,
+                                    onValueChange = { onConfigChange(currentConfig.copy(button1Url = it)) },
+                                    label = { Text("כתובת אתר (URL)") },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    singleLine = true
+                                )
+                            }
+                        }
                     }
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Checkbox(
-                            checked = currentConfig.button2Enabled,
-                            onCheckedChange = { onConfigChange(currentConfig.copy(button2Enabled = it)) }
-                        )
-                        OutlinedTextField(
-                            value = currentConfig.button2Label,
-                            onValueChange = { onConfigChange(currentConfig.copy(button2Label = it)) },
-                            label = { Text("כפתור 2") },
-                            modifier = Modifier.weight(1f),
-                            enabled = currentConfig.button2Enabled,
-                            singleLine = true
-                        )
+                    // Button 2
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Checkbox(
+                                checked = currentConfig.button2Enabled,
+                                onCheckedChange = { onConfigChange(currentConfig.copy(button2Enabled = it)) }
+                            )
+                            OutlinedTextField(
+                                value = currentConfig.button2Label,
+                                onValueChange = { onConfigChange(currentConfig.copy(button2Label = it)) },
+                                label = { Text("כפתור 2 (תווית)") },
+                                modifier = Modifier.weight(1f),
+                                enabled = currentConfig.button2Enabled,
+                                singleLine = true
+                            )
+                        }
+                        if (currentConfig.button2Enabled) {
+                            Text("פעולה לכפתור 2:", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                com.example.data.ButtonActionType.entries.forEach { action ->
+                                    FilterChip(
+                                        selected = currentConfig.button2Action == action,
+                                        onClick = { onConfigChange(currentConfig.copy(button2Action = action)) },
+                                        label = { Text(action.titleHebrew, fontSize = 10.sp) }
+                                    )
+                                }
+                            }
+                            if (currentConfig.button2Action == com.example.data.ButtonActionType.OPEN_BROWSER) {
+                                OutlinedTextField(
+                                    value = currentConfig.button2Url,
+                                    onValueChange = { onConfigChange(currentConfig.copy(button2Url = it)) },
+                                    label = { Text("כתובת אתר (URL)") },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    singleLine = true
+                                )
+                            }
+                        }
                     }
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Checkbox(
-                            checked = currentConfig.button3Enabled,
-                            onCheckedChange = { onConfigChange(currentConfig.copy(button3Enabled = it)) }
-                        )
-                        OutlinedTextField(
-                            value = currentConfig.button3Label,
-                            onValueChange = { onConfigChange(currentConfig.copy(button3Label = it)) },
-                            label = { Text("כפתור 3") },
-                            modifier = Modifier.weight(1f),
-                            enabled = currentConfig.button3Enabled,
-                            singleLine = true
-                        )
+                    // Button 3
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Checkbox(
+                                checked = currentConfig.button3Enabled,
+                                onCheckedChange = { onConfigChange(currentConfig.copy(button3Enabled = it)) }
+                            )
+                            OutlinedTextField(
+                                value = currentConfig.button3Label,
+                                onValueChange = { onConfigChange(currentConfig.copy(button3Label = it)) },
+                                label = { Text("כפתור 3 (תווית)") },
+                                modifier = Modifier.weight(1f),
+                                enabled = currentConfig.button3Enabled,
+                                singleLine = true
+                            )
+                        }
+                        if (currentConfig.button3Enabled) {
+                            Text("פעולה לכפתור 3:", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                com.example.data.ButtonActionType.entries.forEach { action ->
+                                    FilterChip(
+                                        selected = currentConfig.button3Action == action,
+                                        onClick = { onConfigChange(currentConfig.copy(button3Action = action)) },
+                                        label = { Text(action.titleHebrew, fontSize = 10.sp) }
+                                    )
+                                }
+                            }
+                            if (currentConfig.button3Action == com.example.data.ButtonActionType.OPEN_BROWSER) {
+                                OutlinedTextField(
+                                    value = currentConfig.button3Url,
+                                    onValueChange = { onConfigChange(currentConfig.copy(button3Url = it)) },
+                                    label = { Text("כתובת אתר (URL)") },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    singleLine = true
+                                )
+                            }
+                        }
                     }
 
                     Card(
@@ -495,6 +563,40 @@ fun StudioTab(
                             checked = currentConfig.ongoing,
                             onCheckedChange = { onConfigChange(currentConfig.copy(ongoing = it)) }
                         )
+                    }
+                }
+            }
+        }
+
+        // Section 5: Accessibility Permission (Only shown if not enabled)
+        if (!isAccessibilityEnabled) {
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+                ) {
+                    Column(modifier = Modifier.padding(14.dp)) {
+                        Text(
+                            text = "⚠️ הרשאות נגישות (Accessibility)",
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                        Text(
+                            text = "נחוץ כדי להפעיל פעולות מערכת מתקדמות במכשיר.",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Button(
+                            onClick = {
+                                val intent = android.content.Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                                context.startActivity(intent)
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                        ) {
+                            Text("בקש הרשאת נגישות")
+                        }
                     }
                 }
             }

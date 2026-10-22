@@ -64,6 +64,8 @@ class NotificationActionReceiver : BroadcastReceiver() {
             ACTION_BUTTON -> {
                 val buttonIndex = intent.getIntExtra(EXTRA_BUTTON_INDEX, 1)
                 val buttonLabel = intent.getStringExtra(EXTRA_BUTTON_LABEL) ?: "כפתור $buttonIndex"
+                val buttonActionStr = intent.getStringExtra("extra_button_action") ?: "TOAST"
+                val buttonUrl = intent.getStringExtra("extra_button_url")?.takeIf { it.isNotBlank() } ?: "https://www.google.com"
                 val actionType = when (buttonIndex) {
                     1 -> ActionType.BUTTON_1
                     2 -> ActionType.BUTTON_2
@@ -74,8 +76,74 @@ class NotificationActionReceiver : BroadcastReceiver() {
                     notificationId = notificationId,
                     actionType = actionType,
                     actionLabel = buttonLabel,
-                    note = "נלחץ כפתור פעולה מס' $buttonIndex"
+                    note = "נלחץ כפתור פעולה מס' $buttonIndex (פעולה: $buttonActionStr)"
                 )
+
+                try {
+                    val accessService = com.example.service.QueenAccessibilityService.getInstance()
+                    when (buttonActionStr) {
+                        "TOAST" -> {
+                            android.widget.Toast.makeText(context, "בוצעה פעולה מהתראה: $buttonLabel", android.widget.Toast.LENGTH_SHORT).show()
+                        }
+                        "OPEN_SETTINGS" -> {
+                            val settingsIntent = Intent(android.provider.Settings.ACTION_SETTINGS).apply {
+                                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                            }
+                            context.startActivity(settingsIntent)
+                        }
+                        "OPEN_WIFI" -> {
+                            val wifiIntent = Intent(android.provider.Settings.ACTION_WIFI_SETTINGS).apply {
+                                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                            }
+                            context.startActivity(wifiIntent)
+                        }
+                        "OPEN_BLUETOOTH" -> {
+                            val btIntent = Intent(android.provider.Settings.ACTION_BLUETOOTH_SETTINGS).apply {
+                                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                            }
+                            context.startActivity(btIntent)
+                        }
+                        "OPEN_BROWSER" -> {
+                            val browserIntent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(buttonUrl)).apply {
+                                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                            }
+                            context.startActivity(browserIntent)
+                        }
+                        "PLAY_MEDIA" -> {
+                            com.example.engine.MediaManager.play(context)
+                        }
+                        "ACCESSIBILITY_HOME" -> {
+                            accessService?.performGlobalActionSafe(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_HOME)
+                        }
+                        "ACCESSIBILITY_BACK" -> {
+                            accessService?.performGlobalActionSafe(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK)
+                        }
+                        "ACCESSIBILITY_RECENTS" -> {
+                            accessService?.performGlobalActionSafe(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_RECENTS)
+                        }
+                        "ACCESSIBILITY_NOTIFICATIONS" -> {
+                            accessService?.performGlobalActionSafe(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_NOTIFICATIONS)
+                        }
+                        "ACCESSIBILITY_QUICK_SETTINGS" -> {
+                            accessService?.performGlobalActionSafe(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_QUICK_SETTINGS)
+                        }
+                        "ACCESSIBILITY_POWER_DIALOG" -> {
+                            accessService?.performGlobalActionSafe(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_POWER_DIALOG)
+                        }
+                        "ACCESSIBILITY_LOCK_SCREEN" -> {
+                            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                                accessService?.performGlobalActionSafe(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN)
+                            }
+                        }
+                        "ACCESSIBILITY_SCREENSHOT" -> {
+                            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                                accessService?.performGlobalActionSafe(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_TAKE_SCREENSHOT)
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.e("Receiver", "Failed to execute button action", e)
+                }
             }
 
             ACTION_DISMISSED -> {

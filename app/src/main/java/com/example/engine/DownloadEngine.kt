@@ -10,6 +10,7 @@ import com.example.data.NotificationStyleType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -42,6 +43,9 @@ object DownloadEngine {
                 var count: Int
                 var lastProgress = -1
 
+                val baseDelay = 600L
+                val adjustedDelay = (baseDelay / config.progressSpeedFactor).toLong()
+
                 while (inputStream.read(data).also { count = it } != -1) {
                     total += count.toLong()
                     outputStream.write(data, 0, count)
@@ -63,6 +67,7 @@ object DownloadEngine {
                                 manager.notify(config.id, progressBuilder.build())
                             } catch (_: SecurityException) {}
                         }
+                        delay(adjustedDelay)
                     }
                 }
 
