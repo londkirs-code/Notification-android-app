@@ -22,7 +22,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 35
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
@@ -31,7 +31,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for required in settings.gradle.kts build.gradle.kts app/build.gradle.kts; do
+          for required in settings.gradle.kts build.gradle.kts app/build.gradle.kts gradle/libs.versions.toml; do
             if [[ ! -f "$required" ]]; then
               echo "::error::Required Android project file missing: $required"
               exit 1
@@ -48,6 +48,17 @@ jobs:
           java-version: "17"
           cache: gradle
 
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install the project's required Android SDK platform
+        shell: bash
+        run: |
+          set -euo pipefail
+          # This project uses compileSdk release(36) with minorApiLevel 1.
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platform-tools" "platforms;android-36" "platforms;android-36-ext1" "build-tools;36.0.0"
+
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
@@ -55,9 +66,11 @@ jobs:
 
       - name: Build debug APK
         shell: bash
+        env:
+          GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.internal.http.connectionTimeout=60000 -Dorg.gradle.internal.http.socketTimeout=60000"
         run: |
           set -euo pipefail
-          gradle --no-daemon --stacktrace assembleDebug
+          gradle --no-daemon --stacktrace --info assembleDebug
 
       - name: Verify APK and calculate checksum
         shell: bash
