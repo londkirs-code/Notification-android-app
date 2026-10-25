@@ -6,9 +6,11 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.media.RingtoneManager
+import android.net.Uri
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -217,11 +219,22 @@ object NotificationEngine {
         builder.setDeleteIntent(dismissPendingIntent)
 
         try {
-            val largeIconBitmap = BitmapFactory.decodeResource(
-                context.resources,
-                config.imageDrawableRes ?: R.drawable.app_icon_1792631589963
-            )
-            builder.setLargeIcon(largeIconBitmap)
+            val largeIconBitmap: Bitmap? = when {
+                !config.largeIconUri.isNullOrBlank() -> getBitmapFromUriOrPath(context, config.largeIconUri)
+                config.largeIconDrawableRes != null && config.largeIconDrawableRes != 0 -> {
+                    BitmapFactory.decodeResource(context.resources, config.largeIconDrawableRes)
+                }
+                !config.imageUri.isNullOrBlank() -> getBitmapFromUriOrPath(context, config.imageUri)
+                config.imageDrawableRes != null && config.imageDrawableRes != 0 -> {
+                    BitmapFactory.decodeResource(context.resources, config.imageDrawableRes)
+                }
+                else -> {
+                    BitmapFactory.decodeResource(context.resources, R.drawable.app_icon_1792631589963)
+                }
+            }
+            if (largeIconBitmap != null) {
+                builder.setLargeIcon(largeIconBitmap)
+            }
         } catch (_: Exception) {}
 
         applyStyle(context, builder, config)
@@ -343,13 +356,22 @@ object NotificationEngine {
             }
             NotificationStyleType.BIG_PICTURE -> {
                 try {
-                    val pictureRes = config.imageDrawableRes ?: R.drawable.notification_hero_1792631605007
-                    val heroBitmap = BitmapFactory.decodeResource(context.resources, pictureRes)
-                    val bigPicStyle = NotificationCompat.BigPictureStyle()
-                        .bigPicture(heroBitmap)
-                        .setBigContentTitle(config.title)
-                        .setSummaryText(config.summaryText.takeIf { it.isNotBlank() })
-                    builder.setStyle(bigPicStyle)
+                    val heroBitmap: Bitmap? = when {
+                        !config.imageUri.isNullOrBlank() -> getBitmapFromUriOrPath(context, config.imageUri)
+                        config.imageDrawableRes != null && config.imageDrawableRes != 0 -> {
+                            BitmapFactory.decodeResource(context.resources, config.imageDrawableRes)
+                        }
+                        else -> {
+                            BitmapFactory.decodeResource(context.resources, R.drawable.notification_hero_1792631605007)
+                        }
+                    }
+                    if (heroBitmap != null) {
+                        val bigPicStyle = NotificationCompat.BigPictureStyle()
+                            .bigPicture(heroBitmap)
+                            .setBigContentTitle(config.title)
+                            .setSummaryText(config.summaryText.takeIf { it.isNotBlank() })
+                        builder.setStyle(bigPicStyle)
+                    }
                 } catch (_: Exception) {}
             }
             NotificationStyleType.INBOX -> {
@@ -527,5 +549,21 @@ object NotificationEngine {
         }
 
         return sb.toString()
+    }
+
+    fun getBitmapFromUriOrPath(context: Context, pathOrUri: String?): Bitmap? {
+        if (pathOrUri.isNullOrBlank()) return null
+        return try {
+            if (pathOrUri.startsWith("/")) {
+                BitmapFactory.decodeFile(pathOrUri)
+            } else {
+                val uri = Uri.parse(pathOrUri)
+                context.contentResolver.openInputStream(uri)?.use { stream ->
+                    BitmapFactory.decodeStream(stream)
+                }
+            }
+        } catch (_: Exception) {
+            null
+        }
     }
 }

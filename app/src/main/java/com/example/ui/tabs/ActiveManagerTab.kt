@@ -32,6 +32,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.NotificationsOff
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material.icons.filled.Warning
@@ -46,11 +47,17 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.core.app.NotificationManagerCompat
+import com.example.service.QueenAccessibilityService
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -75,24 +82,28 @@ fun ActiveManagerTab(
     val context = LocalContext.current
     val activeIds by NotificationRepository.activeNotificationIds.collectAsState()
 
-    var hasNotificationPermission by remember {
-        mutableStateOf(
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                ContextCompat.checkSelfPermission(
-                    context,
-                    Manifest.permission.POST_NOTIFICATIONS
-                ) == PackageManager.PERMISSION_GRANTED
-            } else {
-                true
+    val lifecycleOwner = LocalLifecycleOwner.current
+    var hasNotificationPermission by remember { mutableStateOf(checkNotificationPermission(context)) }
+    var isAccessibilityEnabled by remember { mutableStateOf(checkAccessibilityEnabled(context)) }
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                isAccessibilityEnabled = checkAccessibilityEnabled(context)
+                hasNotificationPermission = checkNotificationPermission(context)
             }
-        )
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
     }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
-        hasNotificationPermission = isGranted
-        if (isGranted) {
+        hasNotificationPermission = isGranted && NotificationManagerCompat.from(context).areNotificationsEnabled()
+        if (hasNotificationPermission) {
             Toast.makeText(context, "הרשאת התראות אושרה בהצלחה!", Toast.LENGTH_SHORT).show()
         } else {
             Toast.makeText(context, "ההרשאה נדחתה. לא ניתן להציג התראות.", Toast.LENGTH_SHORT).show()
@@ -108,13 +119,6 @@ fun ActiveManagerTab(
     ) {
         // Accessibility Permission Status Card
         item {
-            val accessibilityManager = remember(context) {
-                context.getSystemService(Context.ACCESSIBILITY_SERVICE) as android.view.accessibility.AccessibilityManager
-            }
-            val isAccessibilityEnabled by remember(accessibilityManager) {
-                mutableStateOf(accessibilityManager.isEnabled)
-            }
-
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
@@ -146,12 +150,25 @@ fun ActiveManagerTab(
                     Spacer(modifier = Modifier.width(12.dp))
 
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = if (isAccessibilityEnabled) "הרשאת נגישות פעילה ומאושרת" else "נדרשת הרשאת נגישות לפעולות מתקדמות",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = if (isAccessibilityEnabled) "הרשאת נגישות פעילה ומאושרת" else "נדרשת הרשאת נגישות לפעולות מתקדמות",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.weight(1f)
+                            )
+                            IconButton(
+                                onClick = {
+                                    isAccessibilityEnabled = checkAccessibilityEnabled(context)
+                                    hasNotificationPermission = checkNotificationPermission(context)
+                                    Toast.makeText(context, "סטטוס הרשאות עודכן!", Toast.LENGTH_SHORT).show()
+                                },
+                                modifier = Modifier.size(24.dp)
+                            ) {
+                                Icon(Icons.Default.Refresh, contentDescription = "רענן סטטוס", modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
+                            }
+                        }
                         Text(
                             text = if (isAccessibilityEnabled) "האפליקציה יכולה להפעיל פעולות מערכת גלובליות" else "יש להפעיל את הרשאת הנגישות בהגדרות המכשיר",
                             fontSize = 11.sp,
@@ -160,6 +177,7 @@ fun ActiveManagerTab(
                     }
 
                     if (!isAccessibilityEnabled) {
+                        Spacer(modifier = Modifier.width(6.dp))
                         Button(
                             onClick = {
                                 val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
@@ -459,3 +477,31 @@ fun ActiveManagerTab(
         }
     }
 }
+
+fun checkAccessibilityEnabled(context: Context): Boolean {
+    if (QueenAccessibilityService.getInstance() != null) return true
+    return try {
+        val am = context.getSystemService(Context.ACCESSIBILITY_SERVICE) as? android.view.accessibility.AccessibilityManager
+        val enabledServices = Settings.Secure.getString(
+            context.contentResolver,
+            Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+        ) ?: ""
+        enabledServices.contains(context.packageName) || (am != null && am.isEnabled)
+    } catch (_: Exception) {
+        false
+    }
+}
+
+fun checkNotificationPermission(context: Context): Boolean {
+    val managerCompat = NotificationManagerCompat.from(context)
+    if (!managerCompat.areNotificationsEnabled()) return false
+    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.POST_NOTIFICATIONS
+        ) == PackageManager.PERMISSION_GRANTED
+    } else {
+        true
+    }
+}
+
