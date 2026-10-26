@@ -63,6 +63,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import com.example.engine.MediaManager
+import com.example.util.AccessibilityUtils
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -201,13 +203,13 @@ fun PresetsTab(
                 accentColor = CyanAccent,
                 config = NotificationConfig(
                     id = 205,
-                    title = "נגן מדיה",
-                    content = "Synthwave Beats - Royal Remix",
+                    title = MediaManager.currentTrackTitle.value,
+                    content = MediaManager.currentArtist.value,
                     subText = "מנגן כעת",
                     priority = NotificationPriority.LOW,
                     styleType = NotificationStyleType.MEDIA,
-                    mediaTrackTitle = "Cyber Symphony 2026",
-                    mediaArtist = "Notification King Studio",
+                    mediaTrackTitle = MediaManager.currentTrackTitle.value,
+                    mediaArtist = MediaManager.currentArtist.value,
                     ongoing = true,
                     button1Enabled = false,
                     button2Enabled = false,
@@ -334,12 +336,16 @@ fun PresetsTab(
             }
         }
 
-        items(presets) { preset ->
+        items(presets, key = { it.config.id }) { preset ->
             PresetCard(
                 preset = preset,
                 onSend = {
-                    NotificationEngine.postNotification(context, preset.config)
-                    Toast.makeText(context, "ההתראה נשלחה! בדוק את וילון ההתראות", Toast.LENGTH_SHORT).show()
+                    if (AccessibilityUtils.configRequiresAccessibility(preset.config) && !AccessibilityUtils.isAccessibilityEnabled(context)) {
+                        AccessibilityUtils.promptEnableAccessibility(context, preset.title)
+                    } else {
+                        NotificationEngine.postNotification(context, preset.config)
+                        Toast.makeText(context, "ההתראה נשלחה! בדוק את וילון ההתראות", Toast.LENGTH_SHORT).show()
+                    }
                 },
                 onCopyTermux = {
                     val cmd = NotificationEngine.generateTermuxCommand(preset.config)
@@ -349,6 +355,9 @@ fun PresetsTab(
                 },
                 onEdit = {
                     onLoadInStudio(preset.config)
+                    if (AccessibilityUtils.configRequiresAccessibility(preset.config) && !AccessibilityUtils.isAccessibilityEnabled(context)) {
+                        AccessibilityUtils.promptEnableAccessibility(context, preset.title)
+                    }
                 }
             )
         }

@@ -123,7 +123,15 @@ object NotificationEngine {
     }
 
     fun scheduleNotification(context: Context, config: NotificationConfig, triggerTimeMillis: Long) {
-        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as android.app.AlarmManager
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? android.app.AlarmManager
+            ?: return
+
+        val safeTriggerTime = if (triggerTimeMillis <= System.currentTimeMillis()) {
+            System.currentTimeMillis() + 1000L
+        } else {
+            triggerTimeMillis
+        }
+
         val intent = Intent(context, com.example.receiver.ScheduledNotificationReceiver::class.java).apply {
             putExtra("config", config)
         }
@@ -134,11 +142,67 @@ object NotificationEngine {
             android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
         )
 
-        alarmManager.setExactAndAllowWhileIdle(
-            android.app.AlarmManager.RTC_WAKEUP,
-            triggerTimeMillis,
-            pendingIntent
-        )
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                if (alarmManager.canScheduleExactAlarms()) {
+                    alarmManager.setExactAndAllowWhileIdle(
+                        android.app.AlarmManager.RTC_WAKEUP,
+                        safeTriggerTime,
+                        pendingIntent
+                    )
+                } else {
+                    alarmManager.setAndAllowWhileIdle(
+                        android.app.AlarmManager.RTC_WAKEUP,
+                        safeTriggerTime,
+                        pendingIntent
+                    )
+                }
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                alarmManager.setExactAndAllowWhileIdle(
+                    android.app.AlarmManager.RTC_WAKEUP,
+                    safeTriggerTime,
+                    pendingIntent
+                )
+            } else {
+                alarmManager.setExact(
+                    android.app.AlarmManager.RTC_WAKEUP,
+                    safeTriggerTime,
+                    pendingIntent
+                )
+            }
+        } catch (e: Throwable) {
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    alarmManager.setAndAllowWhileIdle(
+                        android.app.AlarmManager.RTC_WAKEUP,
+                        safeTriggerTime,
+                        pendingIntent
+                    )
+                } else {
+                    alarmManager.set(
+                        android.app.AlarmManager.RTC_WAKEUP,
+                        safeTriggerTime,
+                        pendingIntent
+                    )
+                }
+            } catch (fallbackError: Throwable) {
+                android.util.Log.e("NotificationEngine", "Failed to schedule alarm: ${fallbackError.message}")
+            }
+        }
+    }
+
+    fun cancelScheduledAlarm(context: Context, id: Int) {
+        try {
+            val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as android.app.AlarmManager
+            val intent = Intent(context, com.example.receiver.ScheduledNotificationReceiver::class.java)
+            val pendingIntent = android.app.PendingIntent.getBroadcast(
+                context,
+                id,
+                intent,
+                android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
+            )
+            alarmManager.cancel(pendingIntent)
+        } catch (_: Exception) {}
     }
 
     fun postNotification(context: Context, config: NotificationConfig): Int {
@@ -148,11 +212,6 @@ object NotificationEngine {
         // Handle real download if it's preset 202
         if (config.id == 202) {
             DownloadEngine.startRealDownload(context, config)
-        }
-
-        // Handle real media playback if it's preset 205
-        if (config.id == 205) {
-            MediaManager.play(context)
         }
 
         val smallIconRes = when (config.iconKey) {
@@ -425,8 +484,10 @@ object NotificationEngine {
                 )
                 builder.addAction(R.drawable.ic_action_skip_next, "הבא", pNext)
 
-                builder.setContentTitle(config.mediaTrackTitle)
-                builder.setContentText(config.mediaArtist)
+                val trackTitle = config.mediaTrackTitle.ifBlank { MediaManager.currentTrackTitle.value }
+                val trackArtist = config.mediaArtist.ifBlank { MediaManager.currentArtist.value }
+                builder.setContentTitle(trackTitle)
+                builder.setContentText(trackArtist)
             }
             NotificationStyleType.CHRONOMETER -> {
                 builder.setUsesChronometer(true)
@@ -483,6 +544,7 @@ object NotificationEngine {
     fun cancelNotification(context: Context, id: Int) {
         scheduledJobs[id]?.cancel()
         scheduledJobs.remove(id)
+        cancelScheduledAlarm(context, id)
         val manager = NotificationManagerCompat.from(context)
         manager.cancel(id)
         NotificationRepository.unregisterActiveNotification(id)

@@ -47,11 +47,17 @@ import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.Whatshot
+import android.widget.Toast
+import androidx.compose.material.icons.filled.AudioFile
+import androidx.compose.material.icons.filled.FolderOpen
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -62,7 +68,11 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import com.example.engine.MediaManager
+import com.example.util.AccessibilityUtils
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -151,13 +161,32 @@ fun NotificationMockup(
     editable: Boolean = false,
     onConfigChange: ((NotificationConfig) -> Unit)? = null,
     selectedElement: MockupElement? = null,
-    onElementClick: ((MockupElement) -> Unit)? = null
+    onElementClick: ((MockupElement) -> Unit)? = null,
+    activeEditMode: MockupElement? = null,
+    onActiveEditModeChange: ((MockupElement?) -> Unit)? = null
 ) {
     val context = LocalContext.current
-    var showIconBubble by remember { mutableStateOf(false) }
-    var activeEditingButton by remember { mutableStateOf<Int?>(null) }
-    var showImageBubble by remember { mutableStateOf(false) }
-    var showProgressControls by remember { mutableStateOf(false) }
+    var internalActiveEditMode by remember { mutableStateOf<MockupElement?>(null) }
+    val effectiveEditMode = activeEditMode ?: internalActiveEditMode
+
+    val setEditMode: (MockupElement?) -> Unit = { mode ->
+        internalActiveEditMode = mode
+        onActiveEditModeChange?.invoke(mode)
+        if (mode != null) onElementClick?.invoke(mode)
+    }
+
+    val isIconBubbleOpen = effectiveEditMode == MockupElement.ICON
+    val isImageBubbleOpen = effectiveEditMode == MockupElement.IMAGE
+    val isProgressOpen = effectiveEditMode == MockupElement.PROGRESS
+    val isContentOpen = effectiveEditMode == MockupElement.CONTENT
+    val isDirectReplyOpen = effectiveEditMode == MockupElement.DIRECT_REPLY
+    val isMediaOpen = effectiveEditMode == MockupElement.MEDIA
+    val activeEditingButton = when (effectiveEditMode) {
+        MockupElement.BUTTON_1 -> 1
+        MockupElement.BUTTON_2 -> 2
+        MockupElement.BUTTON_3 -> 3
+        else -> null
+    }
 
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
@@ -177,6 +206,48 @@ fun NotificationMockup(
         }
     }
 
+    val audioFilesPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenMultipleDocuments()
+    ) { uris ->
+        if (!uris.isNullOrEmpty()) {
+            val count = MediaManager.loadFromUris(context, uris)
+            Toast.makeText(context, "נטענו $count שירים בהצלחה מהסייר!", Toast.LENGTH_SHORT).show()
+            val current = MediaManager.playlist.value.firstOrNull()
+            if (current != null) {
+                onConfigChange?.invoke(
+                    config.copy(
+                        styleType = NotificationStyleType.MEDIA,
+                        mediaTrackTitle = current.title,
+                        mediaArtist = current.artist
+                    )
+                )
+            }
+        }
+    }
+
+    val folderPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocumentTree()
+    ) { treeUri ->
+        if (treeUri != null) {
+            val count = MediaManager.loadFromFolder(context, treeUri)
+            if (count > 0) {
+                Toast.makeText(context, "נטענו $count שירים מהתיקייה!", Toast.LENGTH_SHORT).show()
+                val current = MediaManager.playlist.value.firstOrNull()
+                if (current != null) {
+                    onConfigChange?.invoke(
+                        config.copy(
+                            styleType = NotificationStyleType.MEDIA,
+                            mediaTrackTitle = current.title,
+                            mediaArtist = current.artist
+                        )
+                    )
+                }
+            } else {
+                Toast.makeText(context, "לא נמצאו קבצי שמע בתיקייה שנבחרה", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
     Card(
         modifier = modifier
             .fillMaxWidth()
@@ -190,7 +261,7 @@ fun NotificationMockup(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(14.dp)
+                .padding(10.dp)
         ) {
             // Header Row: App Icon + In-place Subtext + In-place Ongoing & Priority
             Row(
@@ -208,9 +279,7 @@ fun NotificationMockup(
                                 Modifier
                                     .border(BorderStroke(1.5.dp, CrownGold), CircleShape)
                                     .clickable {
-                                        showIconBubble = !showIconBubble
-                                        activeEditingButton = null
-                                        onElementClick?.invoke(MockupElement.ICON)
+                                        setEditMode(if (effectiveEditMode == MockupElement.ICON) null else MockupElement.ICON)
                                     }
                             } else {
                                 Modifier
@@ -304,7 +373,7 @@ fun NotificationMockup(
 
             // IN-PLACE ICON BUBBLE (Opens directly when tapping the icon circle)
             AnimatedVisibility(
-                visible = showIconBubble && editable,
+                visible = isIconBubbleOpen && editable,
                 enter = fadeIn() + expandVertically(),
                 exit = fadeOut() + shrinkVertically()
             ) {
@@ -330,7 +399,7 @@ fun NotificationMockup(
                                 color = MaterialTheme.colorScheme.primary
                             )
                             IconButton(
-                                onClick = { showIconBubble = false },
+                                onClick = { setEditMode(null) },
                                 modifier = Modifier.size(20.dp)
                             ) {
                                 Icon(Icons.Default.Close, contentDescription = "סגור", modifier = Modifier.size(14.dp))
@@ -361,7 +430,7 @@ fun NotificationMockup(
                                         )
                                         .clickable {
                                             onConfigChange?.invoke(config.copy(iconKey = key))
-                                            showIconBubble = false
+                                            setEditMode(null)
                                         },
                                     contentAlignment = Alignment.Center
                                 ) {
@@ -382,7 +451,17 @@ fun NotificationMockup(
                     .padding(vertical = 4.dp),
                 verticalAlignment = Alignment.Top
             ) {
-                Column(modifier = Modifier.weight(1f)) {
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .then(
+                            if (editable) {
+                                Modifier.clickable {
+                                    setEditMode(if (effectiveEditMode == MockupElement.CONTENT) null else MockupElement.CONTENT)
+                                }
+                            } else Modifier
+                        )
+                ) {
                     // IN-PLACE EDITABLE TITLE
                     if (editable && onConfigChange != null) {
                         Row(
@@ -456,30 +535,31 @@ fun NotificationMockup(
 
                 Box(
                     modifier = Modifier
-                        .size(46.dp)
+                        .size(40.dp)
                         .clip(RoundedCornerShape(8.dp))
                         .then(
                             if (editable) {
                                 Modifier
                                     .border(BorderStroke(1.5.dp, CrownGold), RoundedCornerShape(8.dp))
                                     .clickable {
-                                        showImageBubble = !showImageBubble
-                                        activeEditingButton = null
-                                        showIconBubble = false
-                                        onElementClick?.invoke(MockupElement.IMAGE)
+                                        setEditMode(if (effectiveEditMode == MockupElement.IMAGE) null else MockupElement.IMAGE)
                                     }
                             } else {
                                 Modifier
                             }
                         )
                 ) {
-                    AsyncImage(
-                        model = ImageRequest.Builder(context)
+                    val thumbnailRequest = remember(currentThumbnailModel) {
+                        ImageRequest.Builder(context)
                             .data(currentThumbnailModel)
-                            .crossfade(true)
-                            .build(),
+                            .size(128, 128)
+                            .crossfade(false)
+                            .build()
+                    }
+                    AsyncImage(
+                        model = thumbnailRequest,
                         contentDescription = "תמונה גדולה",
-                        modifier = Modifier.size(46.dp),
+                        modifier = Modifier.size(40.dp),
                         contentScale = ContentScale.Crop
                     )
                 }
@@ -487,7 +567,7 @@ fun NotificationMockup(
 
             // Image Chooser Bubble (In-place image & photo gallery picker)
             AnimatedVisibility(
-                visible = showImageBubble && editable,
+                visible = isImageBubbleOpen && editable,
                 enter = fadeIn() + expandVertically(),
                 exit = fadeOut() + shrinkVertically()
             ) {
@@ -515,7 +595,7 @@ fun NotificationMockup(
                                 fontWeight = FontWeight.Bold,
                                 color = RoyalPurple
                             )
-                            IconButton(onClick = { showImageBubble = false }, modifier = Modifier.size(22.dp)) {
+                            IconButton(onClick = { setEditMode(null) }, modifier = Modifier.size(22.dp)) {
                                 Icon(Icons.Default.Close, contentDescription = "סגור", modifier = Modifier.size(15.dp))
                             }
                         }
@@ -602,8 +682,15 @@ fun NotificationMockup(
                                         horizontalAlignment = Alignment.CenterHorizontally,
                                         modifier = Modifier.padding(4.dp)
                                     ) {
-                                        Image(
-                                            painter = painterResource(id = preset.drawableRes),
+                                        val presetReq = remember(preset.drawableRes) {
+                                            ImageRequest.Builder(context)
+                                                .data(preset.drawableRes)
+                                                .size(200, 110)
+                                                .crossfade(false)
+                                                .build()
+                                        }
+                                        AsyncImage(
+                                            model = presetReq,
                                             contentDescription = preset.titleHebrew,
                                             modifier = Modifier
                                                 .fillMaxWidth()
@@ -660,28 +747,29 @@ fun NotificationMockup(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(130.dp)
+                        .height(105.dp)
                         .clip(RoundedCornerShape(10.dp))
                         .then(
                             if (editable) {
                                 Modifier
                                     .border(BorderStroke(1.dp, CrownGold), RoundedCornerShape(10.dp))
                                     .clickable {
-                                        showImageBubble = !showImageBubble
-                                        activeEditingButton = null
-                                        showIconBubble = false
-                                        onElementClick?.invoke(MockupElement.IMAGE)
+                                        setEditMode(if (effectiveEditMode == MockupElement.IMAGE) null else MockupElement.IMAGE)
                                     }
                             } else {
                                 Modifier
                             }
                         )
                 ) {
-                    AsyncImage(
-                        model = ImageRequest.Builder(context)
+                    val heroReq = remember(currentHeroModel) {
+                        ImageRequest.Builder(context)
                             .data(currentHeroModel)
-                            .crossfade(true)
-                            .build(),
+                            .size(720, 360)
+                            .crossfade(false)
+                            .build()
+                    }
+                    AsyncImage(
+                        model = heroReq,
                         contentDescription = "תמונת נושא רחבה",
                         modifier = Modifier.matchParentSize(),
                         contentScale = ContentScale.Crop
@@ -745,7 +833,9 @@ fun NotificationMockup(
                         .fillMaxWidth()
                         .then(
                             if (editable) {
-                                Modifier.clickable { showProgressControls = !showProgressControls }
+                                Modifier.clickable {
+                                    setEditMode(if (effectiveEditMode == MockupElement.PROGRESS) null else MockupElement.PROGRESS)
+                                }
                             } else {
                                 Modifier
                             }
@@ -790,7 +880,7 @@ fun NotificationMockup(
                         }
 
                         // In-place Progress Slider & Controls
-                        AnimatedVisibility(visible = showProgressControls && editable) {
+                        AnimatedVisibility(visible = isProgressOpen && editable) {
                             Column(modifier = Modifier.padding(top = 6.dp)) {
                                 if (!config.progressIndeterminate) {
                                     Slider(
@@ -823,6 +913,20 @@ fun NotificationMockup(
                                             )
                                         }
                                     }
+                                }
+
+                                OutlinedButton(
+                                    onClick = {
+                                        onConfigChange?.invoke(config.copy(styleType = NotificationStyleType.STANDARD))
+                                        setEditMode(null)
+                                    },
+                                    modifier = Modifier.padding(top = 4.dp),
+                                    shape = RoundedCornerShape(8.dp),
+                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                                ) {
+                                    Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(13.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("הסר סרגל התקדמות", fontSize = 11.sp)
                                 }
                             }
                         }
@@ -924,28 +1028,49 @@ fun NotificationMockup(
 
             // Media Controls (In-place)
             if (config.styleType == NotificationStyleType.MEDIA) {
+                val isPlayingMedia by MediaManager.isPlaying.collectAsState()
+                val currentTrackTitle by MediaManager.currentTrackTitle.collectAsState()
+                val currentArtist by MediaManager.currentArtist.collectAsState()
+                val playlist by MediaManager.playlist.collectAsState()
+                val currentIndex by MediaManager.currentIndex.collectAsState()
+                val playlistSource by MediaManager.playlistSource.collectAsState()
+
                 Spacer(modifier = Modifier.height(8.dp))
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 4.dp),
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.55f))
+                        .clickable(enabled = editable) {
+                            setEditMode(if (isMediaOpen) null else MockupElement.MEDIA)
+                        }
+                        .padding(8.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    if (editable && onConfigChange != null) {
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
-                            BasicTextField(
-                                value = config.mediaTrackTitle,
-                                onValueChange = { onConfigChange(config.copy(mediaTrackTitle = it)) },
-                                textStyle = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface),
-                                cursorBrush = SolidColor(RoyalPurple)
-                            )
-                            Text(" - ", fontSize = 12.sp)
-                            BasicTextField(
-                                value = config.mediaArtist,
-                                onValueChange = { onConfigChange(config.copy(mediaArtist = it)) },
-                                textStyle = TextStyle(fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant),
-                                cursorBrush = SolidColor(RoyalPurple)
-                            )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = config.mediaTrackTitle.ifBlank { currentTrackTitle },
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(" • ", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(
+                            text = config.mediaArtist.ifBlank { currentArtist },
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        if (editable) {
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Icon(Icons.Default.Edit, contentDescription = "ערוך נגן", modifier = Modifier.size(11.dp), tint = RoyalPurple)
                         }
                     }
 
@@ -956,13 +1081,242 @@ fun NotificationMockup(
                         horizontalArrangement = Arrangement.Center,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(imageVector = Icons.Default.SkipPrevious, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp))
-                        Spacer(modifier = Modifier.width(16.dp))
-                        Box(modifier = Modifier.size(32.dp).clip(CircleShape).background(RoyalPurple), contentAlignment = Alignment.Center) {
-                            Icon(imageVector = Icons.Default.PlayArrow, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+                        IconButton(
+                            onClick = {
+                                MediaManager.prev(context, autoPlay = isPlayingMedia)
+                                onConfigChange?.invoke(
+                                    config.copy(
+                                        mediaTrackTitle = MediaManager.currentTrackTitle.value,
+                                        mediaArtist = MediaManager.currentArtist.value
+                                    )
+                                )
+                            },
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Icon(imageVector = Icons.Default.SkipPrevious, contentDescription = "הקודם", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
                         }
-                        Spacer(modifier = Modifier.width(16.dp))
-                        Icon(imageVector = Icons.Default.SkipNext, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp))
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(RoyalPurple)
+                                .clickable {
+                                    MediaManager.togglePlayPause(context)
+                                    onConfigChange?.invoke(
+                                        config.copy(
+                                            mediaTrackTitle = MediaManager.currentTrackTitle.value,
+                                            mediaArtist = MediaManager.currentArtist.value
+                                        )
+                                    )
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = if (isPlayingMedia) Icons.Default.Pause else Icons.Default.PlayArrow,
+                                contentDescription = if (isPlayingMedia) "השהה" else "נגן",
+                                tint = Color.White,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        IconButton(
+                            onClick = {
+                                MediaManager.next(context, autoPlay = isPlayingMedia)
+                                onConfigChange?.invoke(
+                                    config.copy(
+                                        mediaTrackTitle = MediaManager.currentTrackTitle.value,
+                                        mediaArtist = MediaManager.currentArtist.value
+                                    )
+                                )
+                            },
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Icon(imageVector = Icons.Default.SkipNext, contentDescription = "הבא", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
+                        }
+                    }
+
+                    // IN-PLACE MEDIA CONFIGURATION PANEL (Opens directly when tapping the media player or media tool)
+                    AnimatedVisibility(visible = isMediaOpen && editable) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            HorizontalDivider()
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "📁 בחירת שירים מהסייר המובנה:",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = RoyalPurple
+                                )
+                                IconButton(
+                                    onClick = { setEditMode(null) },
+                                    modifier = Modifier.size(22.dp)
+                                ) {
+                                    Icon(Icons.Default.Close, contentDescription = "סגור", modifier = Modifier.size(14.dp))
+                                }
+                            }
+
+                            // The two SAF file/folder picker buttons
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Button(
+                                    onClick = { audioFilesPickerLauncher.launch(arrayOf("audio/*")) },
+                                    modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(10.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = RoyalPurple),
+                                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp)
+                                ) {
+                                    Icon(Icons.Default.AudioFile, contentDescription = null, modifier = Modifier.size(15.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("בחר שירים מהסייר", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                }
+
+                                OutlinedButton(
+                                    onClick = { folderPickerLauncher.launch(null) },
+                                    modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(10.dp),
+                                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp)
+                                ) {
+                                    Icon(Icons.Default.FolderOpen, contentDescription = null, modifier = Modifier.size(15.dp), tint = CrownGold)
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("בחר תיקייה שלמה", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                }
+                            }
+
+                            // Current playlist info & source
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 8.dp, vertical = 6.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = playlistSource,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        text = "${playlist.size} שירים",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = RoyalPurple
+                                    )
+                                }
+                            }
+
+                            // Tracks horizontal list
+                            if (playlist.isNotEmpty()) {
+                                LazyRow(
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    items(playlist.size) { idx ->
+                                        val trk = playlist[idx]
+                                        val isCurrent = idx == currentIndex
+                                        FilterChip(
+                                            selected = isCurrent,
+                                            onClick = {
+                                                MediaManager.playTrackAtIndex(context, idx)
+                                                onConfigChange?.invoke(
+                                                    config.copy(
+                                                        mediaTrackTitle = trk.title,
+                                                        mediaArtist = trk.artist
+                                                    )
+                                                )
+                                            },
+                                            label = {
+                                                Text(
+                                                    text = "${idx + 1}. ${trk.title}",
+                                                    fontSize = 10.sp,
+                                                    maxLines = 1
+                                                )
+                                            },
+                                            leadingIcon = {
+                                                if (isCurrent && isPlayingMedia) {
+                                                    Icon(Icons.Default.MusicNote, contentDescription = null, modifier = Modifier.size(12.dp), tint = CrownGold)
+                                                }
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+
+                            // TextFields for custom overrides
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                OutlinedTextField(
+                                    value = config.mediaTrackTitle,
+                                    onValueChange = { onConfigChange?.invoke(config.copy(mediaTrackTitle = it)) },
+                                    label = { Text("שם השיר", fontSize = 10.sp) },
+                                    modifier = Modifier.weight(1f),
+                                    singleLine = true
+                                )
+                                OutlinedTextField(
+                                    value = config.mediaArtist,
+                                    onValueChange = { onConfigChange?.invoke(config.copy(mediaArtist = it)) },
+                                    label = { Text("שם האמן", fontSize = 10.sp) },
+                                    modifier = Modifier.weight(1f),
+                                    singleLine = true
+                                )
+                            }
+
+                            // Action buttons: Reset to default + Remove Media Style
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                TextButton(
+                                    onClick = {
+                                        MediaManager.resetToDefaults(context)
+                                        val def = MediaManager.playlist.value.first()
+                                        onConfigChange?.invoke(
+                                            config.copy(
+                                                mediaTrackTitle = def.title,
+                                                mediaArtist = def.artist
+                                            )
+                                        )
+                                    }
+                                ) {
+                                    Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(13.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("איפוס לדמו", fontSize = 11.sp)
+                                }
+
+                                TextButton(
+                                    onClick = {
+                                        MediaManager.stop(context)
+                                        onConfigChange?.invoke(config.copy(styleType = NotificationStyleType.STANDARD))
+                                        setEditMode(null)
+                                    },
+                                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                                ) {
+                                    Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(13.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("הסר סגנון מדיה", fontSize = 11.sp)
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -978,13 +1332,12 @@ fun NotificationMockup(
                     OutlinedButton(
                         onClick = {
                             if (editable) {
-                                activeEditingButton = if (activeEditingButton == 1) null else 1
-                                showIconBubble = false
+                                setEditMode(if (effectiveEditMode == MockupElement.BUTTON_1) null else MockupElement.BUTTON_1)
                             }
                         },
                         modifier = Modifier
                             .weight(1f)
-                            .height(36.dp)
+                            .height(32.dp)
                             .then(
                                 if (activeEditingButton == 1) {
                                     Modifier.border(BorderStroke(2.dp, RoyalPurple), RoundedCornerShape(8.dp))
@@ -1011,10 +1364,10 @@ fun NotificationMockup(
                         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                         modifier = Modifier
                             .weight(1f)
-                            .height(36.dp)
+                            .height(32.dp)
                             .clickable {
                                 onConfigChange?.invoke(config.copy(button1Enabled = true))
-                                activeEditingButton = 1
+                                setEditMode(MockupElement.BUTTON_1)
                             }
                     ) {
                         Row(
@@ -1033,13 +1386,12 @@ fun NotificationMockup(
                     OutlinedButton(
                         onClick = {
                             if (editable) {
-                                activeEditingButton = if (activeEditingButton == 2) null else 2
-                                showIconBubble = false
+                                setEditMode(if (effectiveEditMode == MockupElement.BUTTON_2) null else MockupElement.BUTTON_2)
                             }
                         },
                         modifier = Modifier
                             .weight(1f)
-                            .height(36.dp)
+                            .height(32.dp)
                             .then(
                                 if (activeEditingButton == 2) {
                                     Modifier.border(BorderStroke(2.dp, RoyalPurple), RoundedCornerShape(8.dp))
@@ -1064,10 +1416,10 @@ fun NotificationMockup(
                         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                         modifier = Modifier
                             .weight(1f)
-                            .height(36.dp)
+                            .height(32.dp)
                             .clickable {
                                 onConfigChange?.invoke(config.copy(button2Enabled = true))
-                                activeEditingButton = 2
+                                setEditMode(MockupElement.BUTTON_2)
                             }
                     ) {
                         Row(
@@ -1086,13 +1438,12 @@ fun NotificationMockup(
                     OutlinedButton(
                         onClick = {
                             if (editable) {
-                                activeEditingButton = if (activeEditingButton == 3) null else 3
-                                showIconBubble = false
+                                setEditMode(if (effectiveEditMode == MockupElement.BUTTON_3) null else MockupElement.BUTTON_3)
                             }
                         },
                         modifier = Modifier
                             .weight(1f)
-                            .height(36.dp)
+                            .height(32.dp)
                             .then(
                                 if (activeEditingButton == 3) {
                                     Modifier.border(BorderStroke(2.dp, RoyalPurple), RoundedCornerShape(8.dp))
@@ -1119,10 +1470,13 @@ fun NotificationMockup(
                         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                         modifier = Modifier
                             .weight(1f)
-                            .height(36.dp)
+                            .height(32.dp)
                             .clickable {
                                 onConfigChange?.invoke(config.copy(button3Enabled = true))
-                                activeEditingButton = 3
+                                setEditMode(MockupElement.BUTTON_3)
+                                if (config.button3Action.requiresAccessibility && !AccessibilityUtils.isAccessibilityEnabled(context)) {
+                                    AccessibilityUtils.promptEnableAccessibility(context, config.button3Action.titleHebrew)
+                                }
                             }
                     ) {
                         Row(
@@ -1197,14 +1551,14 @@ fun NotificationMockup(
                                             2 -> onConfigChange?.invoke(config.copy(button2Enabled = false))
                                             else -> onConfigChange?.invoke(config.copy(button3Enabled = false))
                                         }
-                                        activeEditingButton = null
+                                        setEditMode(null)
                                     },
                                     modifier = Modifier.size(24.dp)
                                 ) {
                                     Icon(Icons.Default.Delete, contentDescription = "הסר כפתור", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(16.dp))
                                 }
                                 IconButton(
-                                    onClick = { activeEditingButton = null },
+                                    onClick = { setEditMode(null) },
                                     modifier = Modifier.size(24.dp)
                                 ) {
                                     Icon(Icons.Default.Close, contentDescription = "סגור", modifier = Modifier.size(16.dp))
@@ -1243,6 +1597,9 @@ fun NotificationMockup(
                                             1 -> onConfigChange?.invoke(config.copy(button1Action = actionType))
                                             2 -> onConfigChange?.invoke(config.copy(button2Action = actionType))
                                             else -> onConfigChange?.invoke(config.copy(button3Action = actionType))
+                                        }
+                                        if (actionType.requiresAccessibility && !AccessibilityUtils.isAccessibilityEnabled(context)) {
+                                            AccessibilityUtils.promptEnableAccessibility(context, actionType.titleHebrew)
                                         }
                                     },
                                     label = { Text(actionType.titleHebrew, fontSize = 10.sp) }

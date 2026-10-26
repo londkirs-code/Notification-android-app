@@ -79,6 +79,8 @@ import com.example.ui.theme.CrownGold
 import com.example.ui.theme.EmeraldActive
 import com.example.ui.theme.MyApplicationTheme
 import com.example.ui.theme.RoyalPurple
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.ui.viewmodel.NotificationStudioViewModel
 
 class MainActivity : ComponentActivity() {
 
@@ -125,28 +127,7 @@ class MainActivity : ComponentActivity() {
 fun MainScreen() {
     val context = LocalContext.current
     var selectedTab by remember { mutableIntStateOf(0) }
-    var studioConfig by remember {
-        mutableStateOf(
-            NotificationConfig(
-                id = 101,
-                title = "מלך ההתראות",
-                content = "התראה פעילה עם כפתורי פעולה ומענה ישיר",
-                subText = "NotifyKing",
-                summaryText = "מרכז שליטה",
-                priority = NotificationPriority.HIGH,
-                styleType = NotificationStyleType.STANDARD,
-                button1Enabled = true,
-                button1Label = "אישור וביצוע",
-                button2Enabled = true,
-                button2Label = "פרטים נוספים",
-                button3Enabled = true,
-                button3Label = "דחייה",
-                directReplyEnabled = true,
-                directReplyLabel = "הקלד תשובה ישירה כאן...",
-                directReplyButtonLabel = "השב"
-            )
-        )
-    }
+    val studioViewModel: NotificationStudioViewModel = viewModel()
 
     val logs by NotificationRepository.logs.collectAsState()
     val activeIds by NotificationRepository.activeNotificationIds.collectAsState()
@@ -210,31 +191,13 @@ fun MainScreen() {
                 containerColor = MaterialTheme.colorScheme.surface,
                 tonalElevation = 8.dp
             ) {
-                // Tab 0: Presets
+                // Tab 0: Studio Builder
                 NavigationBarItem(
                     selected = selectedTab == 0,
                     onClick = { selectedTab = 0 },
                     icon = {
                         Icon(
-                            imageVector = if (selectedTab == 0) Icons.Default.AutoAwesome else Icons.Default.Notifications,
-                            contentDescription = "תבניות מוכנות"
-                        )
-                    },
-                    label = { Text("תבניות", fontSize = 12.sp) },
-                    colors = NavigationBarItemDefaults.colors(
-                        selectedIconColor = RoyalPurple,
-                        indicatorColor = RoyalPurple.copy(alpha = 0.18f)
-                    ),
-                    modifier = Modifier.testTag("tab_presets")
-                )
-
-                // Tab 1: Studio Builder
-                NavigationBarItem(
-                    selected = selectedTab == 1,
-                    onClick = { selectedTab = 1 },
-                    icon = {
-                        Icon(
-                            imageVector = if (selectedTab == 1) Icons.Default.Build else Icons.Outlined.Build,
+                            imageVector = if (selectedTab == 0) Icons.Default.Build else Icons.Outlined.Build,
                             contentDescription = "מעבדת סטודיו"
                         )
                     },
@@ -244,6 +207,24 @@ fun MainScreen() {
                         indicatorColor = RoyalPurple.copy(alpha = 0.18f)
                     ),
                     modifier = Modifier.testTag("tab_studio")
+                )
+
+                // Tab 1: Presets
+                NavigationBarItem(
+                    selected = selectedTab == 1,
+                    onClick = { selectedTab = 1 },
+                    icon = {
+                        Icon(
+                            imageVector = if (selectedTab == 1) Icons.Default.AutoAwesome else Icons.Default.Notifications,
+                            contentDescription = "תבניות מוכנות"
+                        )
+                    },
+                    label = { Text("תבניות", fontSize = 12.sp) },
+                    colors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = RoyalPurple,
+                        indicatorColor = RoyalPurple.copy(alpha = 0.18f)
+                    ),
+                    modifier = Modifier.testTag("tab_presets")
                 )
 
                 // Tab 2: Logs
@@ -316,15 +297,12 @@ fun MainScreen() {
                 .padding(innerPadding)
         ) {
             when (selectedTab) {
-                0 -> PresetsTab(
+                0 -> StudioTab(viewModel = studioViewModel)
+                1 -> PresetsTab(
                     onLoadInStudio = { presetConfig ->
-                        studioConfig = presetConfig
-                        selectedTab = 1
+                        studioViewModel.loadPreset(presetConfig)
+                        selectedTab = 0
                     }
-                )
-                1 -> StudioTab(
-                    currentConfig = studioConfig,
-                    onConfigChange = { studioConfig = it }
                 )
                 2 -> HistoryLogTab()
                 3 -> ActiveManagerTab()

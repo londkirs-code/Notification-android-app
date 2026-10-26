@@ -22,6 +22,6 @@ dependencyResolutionManagement {
   }
 }
 
-rootProject.name = "NotifyQueen"
+rootProject.name = "NotifyKing"
 
 include(":app")

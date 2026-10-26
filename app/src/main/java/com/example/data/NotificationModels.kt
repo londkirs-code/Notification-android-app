@@ -35,6 +35,12 @@ enum class SoundPreset(val titleHebrew: String) {
     SILENT("ללא צליל (שקט)")
 }
 
+enum class RepeatUnit(val titleHebrew: String, val secondsMultiplier: Long) {
+    SECONDS("שניות", 1L),
+    MINUTES("דקות", 60L),
+    HOURS("שעות", 3600L)
+}
+
 enum class ButtonActionType(val titleHebrew: String, val category: String) {
     TOAST("הצג הודעת Toast", "כללי"),
     OPEN_SETTINGS("פתח הגדרות מערכת", "מערכת"),
@@ -52,7 +58,9 @@ enum class ButtonActionType(val titleHebrew: String, val category: String) {
     ACCESSIBILITY_QUICK_SETTINGS("נגישות: הגדרות מהירות", "נגישות"),
     ACCESSIBILITY_POWER_DIALOG("נגישות: תפריט כיבוי/הפעלה", "נגישות"),
     ACCESSIBILITY_LOCK_SCREEN("נגישות: נעילת מסך", "נגישות"),
-    ACCESSIBILITY_SCREENSHOT("נגישות: צילום מסך", "נגישות")
+    ACCESSIBILITY_SCREENSHOT("נגישות: צילום מסך", "נגישות");
+
+    val requiresAccessibility: Boolean get() = category == "נגישות" || name.startsWith("ACCESSIBILITY_")
 }
 
 enum class MockupElement(val titleHebrew: String) {
@@ -149,5 +157,8 @@ data class NotificationConfig(
     val timeoutAfterMs: Long = 0,
     val badgeNumber: Int = 1,
     val scheduledTimeMillis: Long? = null,
+    val isRepeating: Boolean = false,
+    val repeatIntervalValue: Int = 10,
+    val repeatUnit: RepeatUnit = RepeatUnit.SECONDS,
     val progressSpeedFactor: Float = 1.0f
 ) : java.io.Serializable

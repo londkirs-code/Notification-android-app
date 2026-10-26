@@ -51,7 +51,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
                 val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
                 val repliedNotification = NotificationCompat.Builder(context, NotificationEngine.CHANNEL_CHAT)
                     .setSmallIcon(R.drawable.ic_stat_notify)
-                    .setContentTitle("מלכת ההתראות (התקבלה תשובה)")
+                    .setContentTitle("מלך ההתראות (התקבלה תשובה)")
                     .setContentText("💬 תשובתך: \"$replyText\"")
                     .setSubText("עובד בהצלחה")
                     .setAutoCancel(true)
@@ -170,31 +170,34 @@ class NotificationActionReceiver : BroadcastReceiver() {
                 val mediaAction = intent.getStringExtra(EXTRA_MEDIA_ACTION) ?: "PLAY_PAUSE"
                 when (mediaAction) {
                     "PLAY_PAUSE" -> {
-                        MediaManager.play(context)
+                        MediaManager.togglePlayPause(context)
                         val isPlaying = MediaManager.isPlaying.value
+                        val currentSong = MediaManager.currentTrackTitle.value
                         NotificationRepository.logAction(
                             notificationId = notificationId,
                             actionType = ActionType.MEDIA_PLAY_PAUSE,
-                            actionLabel = if (isPlaying) "ניגון מדיה" else "השהיית מדיה",
-                            note = if (isPlaying) "סטרים שמע פעיל" else "מושהה"
+                            actionLabel = if (isPlaying) "ניגון: $currentSong" else "השהיית מדיה",
+                            note = if (isPlaying) "מנגן כעת" else "מושהה"
                         )
                     }
                     "NEXT" -> {
-                        MediaManager.play(context, "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3", "SoundHelix Synthwave #2")
+                        MediaManager.next(context, autoPlay = true)
+                        val currentSong = MediaManager.currentTrackTitle.value
                         NotificationRepository.logAction(
                             notificationId = notificationId,
                             actionType = ActionType.MEDIA_NEXT,
                             actionLabel = "הרצועה הבאה",
-                            note = "העברה לשיר הבא"
+                            note = "העברה לשיר: $currentSong"
                         )
                     }
                     "PREV" -> {
-                        MediaManager.play(context, "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3", "SoundHelix Synthwave #3")
+                        MediaManager.prev(context, autoPlay = true)
+                        val currentSong = MediaManager.currentTrackTitle.value
                         NotificationRepository.logAction(
                             notificationId = notificationId,
                             actionType = ActionType.MEDIA_PREV,
                             actionLabel = "הרצועה הקודמת",
-                            note = "חזרה לשיר הקודם"
+                            note = "חזרה לשיר: $currentSong"
                         )
                     }
                 }
