@@ -1,3 +1,4 @@
+# Rebuild requested on 2026-10-26; keep this workflow triggered by app and build configuration changes.
 name: Build Notification Android App APK
 
 on:
