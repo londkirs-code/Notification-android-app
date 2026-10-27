@@ -15,20 +15,15 @@ class NotificationStudioViewModel : ViewModel() {
         NotificationConfig(
             id = 101,
             title = "מלך ההתראות",
-            content = "התראה פעילה עם כפתורי פעולה ומענה ישיר",
+            content = "התראה מעוצבת אישית - הוסף כפתורים ותכנים מארגז הכלים",
             subText = "NotifyKing",
             summaryText = "מרכז שליטה",
             priority = NotificationPriority.HIGH,
             styleType = NotificationStyleType.STANDARD,
-            button1Enabled = true,
-            button1Label = "אישור וביצוע",
-            button2Enabled = true,
-            button2Label = "פרטים נוספים",
-            button3Enabled = true,
-            button3Label = "דחייה",
-            directReplyEnabled = true,
-            directReplyLabel = "הקלד תשובה ישירה כאן...",
-            directReplyButtonLabel = "השב"
+            button1Enabled = false,
+            button2Enabled = false,
+            button3Enabled = false,
+            directReplyEnabled = false
         )
     )
     val config: StateFlow<NotificationConfig> = _config.asStateFlow()

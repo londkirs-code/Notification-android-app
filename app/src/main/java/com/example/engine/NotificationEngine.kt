@@ -305,6 +305,7 @@ object NotificationEngine {
                 putExtra(NotificationActionReceiver.EXTRA_BUTTON_INDEX, 1)
                 putExtra(NotificationActionReceiver.EXTRA_BUTTON_LABEL, config.button1Label)
                 putExtra("extra_button_action", config.button1Action.name)
+                putExtra("extra_button_toast_text", config.button1ToastText)
                 putExtra("extra_button_url", config.button1Url)
                 putExtra("extra_button_package", config.button1Package)
             }
@@ -324,6 +325,7 @@ object NotificationEngine {
                 putExtra(NotificationActionReceiver.EXTRA_BUTTON_INDEX, 2)
                 putExtra(NotificationActionReceiver.EXTRA_BUTTON_LABEL, config.button2Label)
                 putExtra("extra_button_action", config.button2Action.name)
+                putExtra("extra_button_toast_text", config.button2ToastText)
                 putExtra("extra_button_url", config.button2Url)
                 putExtra("extra_button_package", config.button2Package)
             }
@@ -343,6 +345,7 @@ object NotificationEngine {
                 putExtra(NotificationActionReceiver.EXTRA_BUTTON_INDEX, 3)
                 putExtra(NotificationActionReceiver.EXTRA_BUTTON_LABEL, config.button3Label)
                 putExtra("extra_button_action", config.button3Action.name)
+                putExtra("extra_button_toast_text", config.button3ToastText)
                 putExtra("extra_button_url", config.button3Url)
                 putExtra("extra_button_package", config.button3Package)
             }

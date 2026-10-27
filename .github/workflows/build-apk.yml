@@ -140,3 +140,68 @@ jobs:
             NotifyKing-SHA256SUMS.txt
           if-no-files-found: error
           retention-days: 30
+
+      - name: Sync and overwrite NotifyKing.apk on Google Drive
+        shell: bash
+        env:
+          GDRIVE_CREDENTIALS_DATA: ${{ secrets.GDRIVE_CREDENTIALS_DATA }}
+          GDRIVE_FOLDER_ID: ${{ secrets.GDRIVE_FOLDER_ID }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${GDRIVE_CREDENTIALS_DATA:-}" || -z "${GDRIVE_FOLDER_ID:-}" ]]; then
+            echo "::notice::Google Drive secrets (GDRIVE_CREDENTIALS_DATA and GDRIVE_FOLDER_ID) not configured. Skipping Drive update."
+            exit 0
+          fi
+
+          python3 -m pip install --upgrade google-api-python-client google-auth --quiet
+
+          python3 - << 'EOF'
+          import os
+          import json
+          from google.oauth2 import service_account
+          from googleapiclient.discovery import build
+          from googleapiclient.http import MediaFileUpload
+
+          creds_data = os.environ.get("GDRIVE_CREDENTIALS_DATA")
+          folder_id = os.environ.get("GDRIVE_FOLDER_ID")
+          apk_path = "NotifyKing.apk"
+          filename = "NotifyKing.apk"
+
+          if not creds_data or not folder_id:
+              print("Credentials or folder ID missing.")
+              exit(0)
+
+          info = json.loads(creds_data)
+          credentials = service_account.Credentials.from_service_account_info(
+              info,
+              scopes=['https://www.googleapis.com/auth/drive']
+          )
+          service = build('drive', 'v3', credentials=credentials)
+
+          query = f"'{folder_id}' in parents and name = '{filename}' and trashed = false"
+          results = service.files().list(q=query, spaces='drive', fields='files(id, name)').execute()
+          files = results.get('files', [])
+
+          media = MediaFileUpload(apk_path, mimetype='application/vnd.android.package-archive', resumable=True)
+
+          if files:
+              file_id = files[0]['id']
+              print(f"Updating existing file ID {file_id} with latest {filename}...")
+              updated_file = service.files().update(
+                  fileId=file_id,
+                  media_body=media
+              ).execute()
+              print(f"File updated successfully! File ID: {updated_file.get('id')}")
+          else:
+              print(f"File {filename} does not exist in folder. Uploading new file...")
+              file_metadata = {
+                  'name': filename,
+                  'parents': [folder_id]
+              }
+              new_file = service.files().create(
+                  body=file_metadata,
+                  media_body=media,
+                  fields='id'
+              ).execute()
+              print(f"File uploaded successfully! File ID: {new_file.get('id')}")
+          EOF

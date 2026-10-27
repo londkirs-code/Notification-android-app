@@ -27,6 +27,11 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -1322,277 +1327,328 @@ fun NotificationMockup(
             }
 
             // IN-PLACE ACTION BUTTONS ROW
-            Spacer(modifier = Modifier.height(10.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                // Button 1
-                if (config.button1Enabled && config.button1Label.isNotBlank()) {
-                    OutlinedButton(
-                        onClick = {
-                            if (editable) {
-                                setEditMode(if (effectiveEditMode == MockupElement.BUTTON_1) null else MockupElement.BUTTON_1)
-                            }
-                        },
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(32.dp)
-                            .then(
-                                if (activeEditingButton == 1) {
-                                    Modifier.border(BorderStroke(2.dp, RoyalPurple), RoundedCornerShape(8.dp))
-                                } else {
-                                    Modifier
-                                }
-                            ),
-                        shape = RoundedCornerShape(8.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary),
-                        contentPadding = PaddingValues(horizontal = 4.dp)
-                    ) {
-                        Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(13.dp))
-                        Spacer(modifier = Modifier.width(3.dp))
-                        Text(config.button1Label, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        if (editable) {
-                            Spacer(modifier = Modifier.width(2.dp))
-                            Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(10.dp), tint = RoyalPurple)
-                        }
-                    }
-                } else if (editable) {
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = Color.Transparent,
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(32.dp)
-                            .clickable {
-                                onConfigChange?.invoke(config.copy(button1Enabled = true))
-                                setEditMode(MockupElement.BUTTON_1)
-                            }
-                    ) {
-                        Row(
-                            horizontalArrangement = Arrangement.Center,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(12.dp), tint = MaterialTheme.colorScheme.primary)
-                            Spacer(modifier = Modifier.width(2.dp))
-                            Text("+ כפתור 1", fontSize = 10.sp, color = MaterialTheme.colorScheme.primary)
-                        }
-                    }
-                }
+            val hasAnyButton = (config.button1Enabled && config.button1Label.isNotBlank()) ||
+                               (config.button2Enabled && config.button2Label.isNotBlank()) ||
+                               (config.button3Enabled && config.button3Label.isNotBlank())
 
-                // Button 2
-                if (config.button2Enabled && config.button2Label.isNotBlank()) {
-                    OutlinedButton(
-                        onClick = {
-                            if (editable) {
-                                setEditMode(if (effectiveEditMode == MockupElement.BUTTON_2) null else MockupElement.BUTTON_2)
-                            }
-                        },
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(32.dp)
-                            .then(
-                                if (activeEditingButton == 2) {
-                                    Modifier.border(BorderStroke(2.dp, RoyalPurple), RoundedCornerShape(8.dp))
-                                } else {
-                                    Modifier
+            if (hasAnyButton || editable) {
+                Spacer(modifier = Modifier.height(6.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Button 1
+                    if (config.button1Enabled && config.button1Label.isNotBlank()) {
+                        OutlinedButton(
+                            onClick = {
+                                if (editable) {
+                                    setEditMode(if (effectiveEditMode == MockupElement.BUTTON_1) null else MockupElement.BUTTON_1)
                                 }
-                            ),
-                        shape = RoundedCornerShape(8.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.secondary),
-                        contentPadding = PaddingValues(horizontal = 4.dp)
-                    ) {
-                        Text(config.button2Label, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        if (editable) {
-                            Spacer(modifier = Modifier.width(2.dp))
-                            Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(10.dp), tint = MaterialTheme.colorScheme.secondary)
-                        }
-                    }
-                } else if (editable) {
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = Color.Transparent,
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(32.dp)
-                            .clickable {
-                                onConfigChange?.invoke(config.copy(button2Enabled = true))
-                                setEditMode(MockupElement.BUTTON_2)
-                            }
-                    ) {
-                        Row(
-                            horizontalArrangement = Arrangement.Center,
-                            verticalAlignment = Alignment.CenterVertically
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(28.dp),
+                            shape = RoundedCornerShape(6.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary),
+                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)
                         ) {
-                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(12.dp), tint = MaterialTheme.colorScheme.secondary)
-                            Spacer(modifier = Modifier.width(2.dp))
-                            Text("+ כפתור 2", fontSize = 10.sp, color = MaterialTheme.colorScheme.secondary)
+                            Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(11.dp))
+                            Spacer(modifier = Modifier.width(3.dp))
+                            Text(config.button1Label, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            if (editable) {
+                                Spacer(modifier = Modifier.width(2.dp))
+                                Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(9.dp), tint = RoyalPurple)
+                            }
                         }
                     }
-                }
 
-                // Button 3
-                if (config.button3Enabled && config.button3Label.isNotBlank()) {
-                    OutlinedButton(
-                        onClick = {
-                            if (editable) {
-                                setEditMode(if (effectiveEditMode == MockupElement.BUTTON_3) null else MockupElement.BUTTON_3)
-                            }
-                        },
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(32.dp)
-                            .then(
-                                if (activeEditingButton == 3) {
-                                    Modifier.border(BorderStroke(2.dp, RoyalPurple), RoundedCornerShape(8.dp))
-                                } else {
-                                    Modifier
+                    // Button 2
+                    if (config.button2Enabled && config.button2Label.isNotBlank()) {
+                        OutlinedButton(
+                            onClick = {
+                                if (editable) {
+                                    setEditMode(if (effectiveEditMode == MockupElement.BUTTON_2) null else MockupElement.BUTTON_2)
                                 }
-                            ),
-                        shape = RoundedCornerShape(8.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                        contentPadding = PaddingValues(horizontal = 4.dp)
-                    ) {
-                        Icon(Icons.Default.Close, contentDescription = null, modifier = Modifier.size(13.dp))
-                        Spacer(modifier = Modifier.width(3.dp))
-                        Text(config.button3Label, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        if (editable) {
-                            Spacer(modifier = Modifier.width(2.dp))
-                            Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(10.dp), tint = MaterialTheme.colorScheme.error)
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(28.dp),
+                            shape = RoundedCornerShape(6.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.secondary),
+                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)
+                        ) {
+                            Text(config.button2Label, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            if (editable) {
+                                Spacer(modifier = Modifier.width(2.dp))
+                                Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(9.dp), tint = MaterialTheme.colorScheme.secondary)
+                            }
                         }
                     }
-                } else if (editable) {
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = Color.Transparent,
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(32.dp)
-                            .clickable {
-                                onConfigChange?.invoke(config.copy(button3Enabled = true))
-                                setEditMode(MockupElement.BUTTON_3)
-                                if (config.button3Action.requiresAccessibility && !AccessibilityUtils.isAccessibilityEnabled(context)) {
-                                    AccessibilityUtils.promptEnableAccessibility(context, config.button3Action.titleHebrew)
+
+                    // Button 3
+                    if (config.button3Enabled && config.button3Label.isNotBlank()) {
+                        OutlinedButton(
+                            onClick = {
+                                if (editable) {
+                                    setEditMode(if (effectiveEditMode == MockupElement.BUTTON_3) null else MockupElement.BUTTON_3)
                                 }
-                            }
-                    ) {
-                        Row(
-                            horizontalArrangement = Arrangement.Center,
-                            verticalAlignment = Alignment.CenterVertically
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(28.dp),
+                            shape = RoundedCornerShape(6.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)
                         ) {
-                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(12.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Spacer(modifier = Modifier.width(2.dp))
-                            Text("+ כפתור 3", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Icon(Icons.Default.Close, contentDescription = null, modifier = Modifier.size(11.dp))
+                            Spacer(modifier = Modifier.width(3.dp))
+                            Text(config.button3Label, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            if (editable) {
+                                Spacer(modifier = Modifier.width(2.dp))
+                                Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(9.dp), tint = MaterialTheme.colorScheme.error)
+                            }
+                        }
+                    }
+
+                    // Compact Add Button slot when in edit mode and slots remaining
+                    val enabledCount = (if (config.button1Enabled) 1 else 0) +
+                                       (if (config.button2Enabled) 1 else 0) +
+                                       (if (config.button3Enabled) 1 else 0)
+                    if (editable && enabledCount < 3) {
+                        val nextSlot = when {
+                            !config.button1Enabled -> 1
+                            !config.button2Enabled -> 2
+                            else -> 3
+                        }
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = Color.Transparent,
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f)),
+                            modifier = Modifier
+                                .then(if (enabledCount > 0) Modifier.weight(0.7f) else Modifier.fillMaxWidth())
+                                .height(28.dp)
+                                .clickable {
+                                    when (nextSlot) {
+                                        1 -> {
+                                            onConfigChange?.invoke(config.copy(button1Enabled = true))
+                                            setEditMode(MockupElement.BUTTON_1)
+                                        }
+                                        2 -> {
+                                            onConfigChange?.invoke(config.copy(button2Enabled = true))
+                                            setEditMode(MockupElement.BUTTON_2)
+                                        }
+                                        3 -> {
+                                            onConfigChange?.invoke(config.copy(button3Enabled = true))
+                                            setEditMode(MockupElement.BUTTON_3)
+                                        }
+                                    }
+                                }
+                        ) {
+                            Row(
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(horizontal = 6.dp)
+                            ) {
+                                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(12.dp), tint = MaterialTheme.colorScheme.primary)
+                                Spacer(modifier = Modifier.width(3.dp))
+                                Text(
+                                    text = if (enabledCount == 0) "+ הוסף כפתור פעולה" else "+ כפתור $nextSlot",
+                                    fontSize = 10.sp,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
                         }
                     }
                 }
             }
+        }
+    }
 
-            // IN-PLACE BUTTON CONFIGURATION BUBBLE (Opens directly under the button row when tapping a button!)
-            AnimatedVisibility(
-                visible = activeEditingButton != null && editable,
-                enter = fadeIn() + expandVertically(),
-                exit = fadeOut() + shrinkVertically()
+    // MODAL DIALOG FOR BUTTON CONFIGURATION (Dismisses on outside tap, 1/3 size, categorized)
+    if (activeEditingButton != null && editable) {
+        val btnIdx = activeEditingButton
+        val btnLabel = when (btnIdx) {
+            1 -> config.button1Label
+            2 -> config.button2Label
+            else -> config.button3Label
+        }
+        val btnAction = when (btnIdx) {
+            1 -> config.button1Action
+            2 -> config.button2Action
+            else -> config.button3Action
+        }
+        val btnToastText = when (btnIdx) {
+            1 -> config.button1ToastText
+            2 -> config.button2ToastText
+            else -> config.button3ToastText
+        }
+        val btnUrl = when (btnIdx) {
+            1 -> config.button1Url
+            2 -> config.button2Url
+            else -> config.button3Url
+        }
+        val btnPkg = when (btnIdx) {
+            1 -> config.button1Package
+            2 -> config.button2Package
+            else -> config.button3Package
+        }
+
+        var selectedCategory by remember(btnIdx) {
+            mutableStateOf(btnAction.category)
+        }
+
+        Dialog(
+            onDismissRequest = { setEditMode(null) },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth(0.92f)
+                    .widthIn(max = 400.dp)
+                    .padding(8.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
             ) {
-                val btnIdx = activeEditingButton ?: 1
-                val btnLabel = when (btnIdx) {
-                    1 -> config.button1Label
-                    2 -> config.button2Label
-                    else -> config.button3Label
-                }
-                val btnAction = when (btnIdx) {
-                    1 -> config.button1Action
-                    2 -> config.button2Action
-                    else -> config.button3Action
-                }
-                val btnUrl = when (btnIdx) {
-                    1 -> config.button1Url
-                    2 -> config.button2Url
-                    else -> config.button3Url
-                }
-                val btnPkg = when (btnIdx) {
-                    1 -> config.button1Package
-                    2 -> config.button2Package
-                    else -> config.button3Package
-                }
-
-                Surface(
-                    shape = RoundedCornerShape(14.dp),
-                    color = MaterialTheme.colorScheme.surface,
-                    border = BorderStroke(1.5.dp, RoyalPurple),
-                    shadowElevation = 6.dp,
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 10.dp)
+                        .padding(12.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    Column(
-                        modifier = Modifier.padding(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    // Header: Title & Actions
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Surface(
+                                shape = CircleShape,
+                                color = RoyalPurple.copy(alpha = 0.15f),
+                                modifier = Modifier.size(24.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Text(
+                                        text = "$btnIdx",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = RoyalPurple
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = "🔘 הגדרות כפתור $btnIdx ישירות במקום:",
-                                fontSize = 12.sp,
+                                text = "הגדרת כפתור פעולה $btnIdx",
+                                fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = RoyalPurple
                             )
-                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                IconButton(
-                                    onClick = {
-                                        when (btnIdx) {
-                                            1 -> onConfigChange?.invoke(config.copy(button1Enabled = false))
-                                            2 -> onConfigChange?.invoke(config.copy(button2Enabled = false))
-                                            else -> onConfigChange?.invoke(config.copy(button3Enabled = false))
-                                        }
-                                        setEditMode(null)
-                                    },
-                                    modifier = Modifier.size(24.dp)
+                        }
+
+                        Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                            IconButton(
+                                onClick = {
+                                    when (btnIdx) {
+                                        1 -> onConfigChange?.invoke(config.copy(button1Enabled = false))
+                                        2 -> onConfigChange?.invoke(config.copy(button2Enabled = false))
+                                        else -> onConfigChange?.invoke(config.copy(button3Enabled = false))
+                                    }
+                                    setEditMode(null)
+                                },
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Icon(Icons.Default.Delete, contentDescription = "הסר כפתור", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(16.dp))
+                            }
+                            IconButton(
+                                onClick = { setEditMode(null) },
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Icon(Icons.Default.Close, contentDescription = "סגור חלון", modifier = Modifier.size(16.dp))
+                            }
+                        }
+                    }
+
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+
+                    // Button Label Input
+                    OutlinedTextField(
+                        value = btnLabel,
+                        onValueChange = { newLabel ->
+                            when (btnIdx) {
+                                1 -> onConfigChange?.invoke(config.copy(button1Label = newLabel))
+                                2 -> onConfigChange?.invoke(config.copy(button2Label = newLabel))
+                                else -> onConfigChange?.invoke(config.copy(button3Label = newLabel))
+                            }
+                        },
+                        label = { Text("טקסט הכפתור (Label)", fontSize = 11.sp) },
+                        textStyle = TextStyle(fontSize = 12.sp),
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+
+                    // Category Tabs / Selector
+                    Text(
+                        text = "קטגוריית פעולה:",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    val categories = listOf("הכל", "כללי", "מערכת", "נגישות", "אפליקציות", "אינטרנט", "מדיה")
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        items(categories) { cat ->
+                            val isCatSelected = selectedCategory == cat
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = if (isCatSelected) RoyalPurple else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                                modifier = Modifier
+                                    .height(26.dp)
+                                    .clickable { selectedCategory = cat }
+                            ) {
+                                Box(
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                    contentAlignment = Alignment.Center
                                 ) {
-                                    Icon(Icons.Default.Delete, contentDescription = "הסר כפתור", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(16.dp))
-                                }
-                                IconButton(
-                                    onClick = { setEditMode(null) },
-                                    modifier = Modifier.size(24.dp)
-                                ) {
-                                    Icon(Icons.Default.Close, contentDescription = "סגור", modifier = Modifier.size(16.dp))
+                                    Text(
+                                        text = cat,
+                                        fontSize = 10.sp,
+                                        fontWeight = if (isCatSelected) FontWeight.Bold else FontWeight.Normal,
+                                        color = if (isCatSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
                                 }
                             }
                         }
+                    }
 
-                        // Button Label in-place textfield
-                        OutlinedTextField(
-                            value = btnLabel,
-                            onValueChange = { newLabel ->
-                                when (btnIdx) {
-                                    1 -> onConfigChange?.invoke(config.copy(button1Label = newLabel))
-                                    2 -> onConfigChange?.invoke(config.copy(button2Label = newLabel))
-                                    else -> onConfigChange?.invoke(config.copy(button3Label = newLabel))
-                                }
-                            },
-                            label = { Text("טקסט הכפתור (Label)") },
-                            modifier = Modifier.fillMaxWidth(),
-                            singleLine = true
-                        )
+                    // Filtered action chips (Compact & tight spacing!)
+                    val displayedActions = remember(selectedCategory) {
+                        if (selectedCategory == "הכל") ButtonActionType.entries
+                        else ButtonActionType.entries.filter { it.category == selectedCategory }
+                    }
 
-                        Text("בחר פעולה שתופעל בלחיצה על הכפתור:", fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
-
-                        // Action pills
-                        FlowRow(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(4.dp),
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            ButtonActionType.entries.forEach { actionType ->
-                                FilterChip(
-                                    selected = btnAction == actionType,
-                                    onClick = {
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        displayedActions.forEach { actionType ->
+                            val isActionSelected = btnAction == actionType
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = if (isActionSelected) RoyalPurple.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                                border = BorderStroke(
+                                    width = if (isActionSelected) 1.5.dp else 1.dp,
+                                    color = if (isActionSelected) RoyalPurple else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                                ),
+                                modifier = Modifier
+                                    .height(26.dp)
+                                    .clickable {
                                         when (btnIdx) {
                                             1 -> onConfigChange?.invoke(config.copy(button1Action = actionType))
                                             2 -> onConfigChange?.invoke(config.copy(button2Action = actionType))
@@ -1601,67 +1657,138 @@ fun NotificationMockup(
                                         if (actionType.requiresAccessibility && !AccessibilityUtils.isAccessibilityEnabled(context)) {
                                             AccessibilityUtils.promptEnableAccessibility(context, actionType.titleHebrew)
                                         }
-                                    },
-                                    label = { Text(actionType.titleHebrew, fontSize = 10.sp) }
-                                )
+                                    }
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    if (isActionSelected) {
+                                        Icon(
+                                            Icons.Default.Check,
+                                            contentDescription = null,
+                                            tint = RoyalPurple,
+                                            modifier = Modifier.size(11.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(3.dp))
+                                    }
+                                    Text(
+                                        text = actionType.titleHebrew,
+                                        fontSize = 10.sp,
+                                        fontWeight = if (isActionSelected) FontWeight.Bold else FontWeight.Normal,
+                                        color = if (isActionSelected) RoyalPurple else MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
                             }
                         }
+                    }
 
-                        // In-place URL input
-                        if (btnAction == ButtonActionType.OPEN_BROWSER) {
-                            OutlinedTextField(
-                                value = btnUrl,
-                                onValueChange = { newUrl ->
-                                    when (btnIdx) {
-                                        1 -> onConfigChange?.invoke(config.copy(button1Url = newUrl))
-                                        2 -> onConfigChange?.invoke(config.copy(button2Url = newUrl))
-                                        else -> onConfigChange?.invoke(config.copy(button3Url = newUrl))
-                                    }
-                                },
-                                label = { Text("כתובת אתר (URL, לדוגמה: https://google.com)") },
-                                modifier = Modifier.fillMaxWidth(),
-                                singleLine = true
-                            )
-                        }
+                    // Specific Action Parameter Editors:
+                    // 1. TOAST Custom Text (Request 2)
+                    if (btnAction == ButtonActionType.TOAST) {
+                        OutlinedTextField(
+                            value = btnToastText,
+                            onValueChange = { newToastText ->
+                                when (btnIdx) {
+                                    1 -> onConfigChange?.invoke(config.copy(button1ToastText = newToastText))
+                                    2 -> onConfigChange?.invoke(config.copy(button2ToastText = newToastText))
+                                    else -> onConfigChange?.invoke(config.copy(button3ToastText = newToastText))
+                                }
+                            },
+                            label = { Text("תוכן הודעת Toast (השאר ריק לברירת מחדל)", fontSize = 10.sp) },
+                            placeholder = { Text("הודעה שתוצג למשתמש...", fontSize = 10.sp) },
+                            textStyle = TextStyle(fontSize = 11.sp),
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true
+                        )
+                    }
 
-                        // In-place Package Name input
-                        if (btnAction == ButtonActionType.OPEN_APP) {
-                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                OutlinedTextField(
-                                    value = btnPkg,
-                                    onValueChange = { newPkg ->
-                                        when (btnIdx) {
-                                            1 -> onConfigChange?.invoke(config.copy(button1Package = newPkg))
-                                            2 -> onConfigChange?.invoke(config.copy(button2Package = newPkg))
-                                            else -> onConfigChange?.invoke(config.copy(button3Package = newPkg))
+                    // 2. OPEN_BROWSER URL
+                    if (btnAction == ButtonActionType.OPEN_BROWSER) {
+                        OutlinedTextField(
+                            value = btnUrl,
+                            onValueChange = { newUrl ->
+                                when (btnIdx) {
+                                    1 -> onConfigChange?.invoke(config.copy(button1Url = newUrl))
+                                    2 -> onConfigChange?.invoke(config.copy(button2Url = newUrl))
+                                    else -> onConfigChange?.invoke(config.copy(button3Url = newUrl))
+                                }
+                            },
+                            label = { Text("כתובת אתר (URL)", fontSize = 10.sp) },
+                            textStyle = TextStyle(fontSize = 11.sp),
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true
+                        )
+                    }
+
+                    // 3. OPEN_APP Package
+                    if (btnAction == ButtonActionType.OPEN_APP) {
+                        OutlinedTextField(
+                            value = btnPkg,
+                            onValueChange = { newPkg ->
+                                when (btnIdx) {
+                                    1 -> onConfigChange?.invoke(config.copy(button1Package = newPkg))
+                                    2 -> onConfigChange?.invoke(config.copy(button2Package = newPkg))
+                                    else -> onConfigChange?.invoke(config.copy(button3Package = newPkg))
+                                }
+                            },
+                            label = { Text("שם חבילה (Package Name)", fontSize = 10.sp) },
+                            textStyle = TextStyle(fontSize = 11.sp),
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("קיצורים:", fontSize = 9.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            listOf(
+                                "וואטסאפ" to "com.whatsapp",
+                                "יוטיוב" to "com.google.android.youtube",
+                                "כרום" to "com.android.chrome"
+                            ).forEach { (appName, appPkg) ->
+                                Surface(
+                                    shape = RoundedCornerShape(4.dp),
+                                    color = if (btnPkg == appPkg) RoyalPurple else MaterialTheme.colorScheme.surfaceVariant,
+                                    modifier = Modifier
+                                        .height(20.dp)
+                                        .clickable {
+                                            when (btnIdx) {
+                                                1 -> onConfigChange?.invoke(config.copy(button1Package = appPkg))
+                                                2 -> onConfigChange?.invoke(config.copy(button2Package = appPkg))
+                                                else -> onConfigChange?.invoke(config.copy(button3Package = appPkg))
+                                            }
                                         }
-                                    },
-                                    label = { Text("שם חבילה (Package Name)") },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    singleLine = true
-                                )
-                                Text("קיצורי דרך מהירים:", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                    listOf(
-                                        "וואטסאפ" to "com.whatsapp",
-                                        "יוטיוב" to "com.google.android.youtube",
-                                        "כרום" to "com.android.chrome"
-                                    ).forEach { (appName, appPkg) ->
-                                        FilterChip(
-                                            selected = btnPkg == appPkg,
-                                            onClick = {
-                                                when (btnIdx) {
-                                                    1 -> onConfigChange?.invoke(config.copy(button1Package = appPkg))
-                                                    2 -> onConfigChange?.invoke(config.copy(button2Package = appPkg))
-                                                    else -> onConfigChange?.invoke(config.copy(button3Package = appPkg))
-                                                }
-                                            },
-                                            label = { Text(appName, fontSize = 9.sp) }
+                                ) {
+                                    Box(
+                                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = appName,
+                                            fontSize = 9.sp,
+                                            color = if (btnPkg == appPkg) Color.White else MaterialTheme.colorScheme.onSurface
                                         )
                                     }
                                 }
                             }
                         }
+                    }
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    // Bottom Done Button
+                    Button(
+                        onClick = { setEditMode(null) },
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = RoyalPurple),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(32.dp),
+                        contentPadding = PaddingValues(0.dp)
+                    ) {
+                        Text("סיום ועריכה ✓", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }

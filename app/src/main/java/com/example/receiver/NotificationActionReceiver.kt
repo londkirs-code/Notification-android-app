@@ -83,7 +83,9 @@ class NotificationActionReceiver : BroadcastReceiver() {
                     val accessService = com.example.service.QueenAccessibilityService.getInstance()
                     when (buttonActionStr) {
                         "TOAST" -> {
-                            android.widget.Toast.makeText(context, "בוצעה פעולה מהתראה: $buttonLabel", android.widget.Toast.LENGTH_SHORT).show()
+                            val customToastText = intent.getStringExtra("extra_button_toast_text")
+                            val displayToast = if (!customToastText.isNullOrBlank()) customToastText else "בוצעה פעולה מהתראה: $buttonLabel"
+                            android.widget.Toast.makeText(context, displayToast, android.widget.Toast.LENGTH_SHORT).show()
                         }
                         "OPEN_SETTINGS" -> {
                             val settingsIntent = Intent(android.provider.Settings.ACTION_SETTINGS).apply {
